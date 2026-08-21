@@ -63,9 +63,6 @@
                         <ejbModule>
                             <groupId>me.wishva.globalTradeLogistics</groupId>
                             <artifactId>global-trade-logistics-iam-svc</artifactId>
-                            <type>ejb</type>
-                            <bundleDir>/</bundleDir>
-                            <bundleFileName>global-trade-logistics-iam-svc-1.0.0.jar</bundleFileName>
                         </ejbModule>
                     </modules>
                 </configuration>
