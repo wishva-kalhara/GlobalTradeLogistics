@@ -18,4 +18,26 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
+    <dependencies>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.32</version>
+            <scope>provided</scope>
+        </dependency>
+        <!--
+            Compile scope (not provided): GlassFish 7 ships EclipseLink by
+            default, so Hibernate and its transitive deps must be bundled
+            with the app. maven-ear-plugin picks these up automatically into
+            the EAR's lib/ (defaultLibBundleDir) since they're resolved
+            dependencies of core but not one of app/pom.xml's declared
+            ejb/war/jarModule artifacts.
+        -->
+        <dependency>
+            <groupId>org.hibernate.orm</groupId>
+            <artifactId>hibernate-core</artifactId>
+            <version>6.4.4.Final</version>
+        </dependency>
+    </dependencies>
+
 </project>

@@ -2,11 +2,24 @@
 -- Loaded after 01-schema.postgres.sql (docker-entrypoint-initdb.d runs
 -- files in filename order) — does not modify any of the 15 existing tables.
 
+-- Native enum type mirroring me.wishva.globalTradeLogistics.core.enums.Role.
+-- CREATE TYPE has no IF NOT EXISTS, so guard it explicitly for idempotent
+-- re-runs.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'role_type') THEN
+    CREATE TYPE role_type AS ENUM (
+      'ADMIN', 'WORKER', 'COORDINATOR', 'CUSTOMS_AGENT', 'WAREHOUSE_MANAGER', 'VENDOR_REP', 'CUSTOMER'
+    );
+  END IF;
+END
+$$;
+
 CREATE TABLE IF NOT EXISTS users (
   user_id SERIAL NOT NULL,
   email VARCHAR(255) NOT NULL UNIQUE,
   full_name VARCHAR(255) NOT NULL,
-  role VARCHAR(45) NOT NULL,
+  role role_type NOT NULL,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   PRIMARY KEY (user_id)
 );

@@ -33,6 +33,11 @@ echo "[entrypoint] configuring listeners"
 "${ASADMIN}" set server-config.network-config.network-listeners.network-listener.http-listener-2.port="${HTTPS_PORT}"
 
 echo "[entrypoint] configuring JDBC connection pool for PostgreSQL (${DB_HOST}:${DB_PORT}/${POSTGRES_DB}, steady=${DB_POOL_MIN_SIZE} max=${DB_POOL_MAX_SIZE})"
+# stringType=unspecified: pgjdbc otherwise binds Java String params as
+# varchar, which Postgres refuses to implicitly assign into native enum
+# columns (e.g. users.role role_type) — "unspecified" lets Postgres infer
+# and cast the target type itself, so JPA's @Enumerated(STRING) just works
+# against enum columns without a custom AttributeConverter.
 if ! "${ASADMIN}" list-jdbc-connection-pools | grep -q "^${POOL_NAME}$"; then
   "${ASADMIN}" create-jdbc-connection-pool \
     --datasourceclassname org.postgresql.ds.PGSimpleDataSource \
@@ -40,7 +45,7 @@ if ! "${ASADMIN}" list-jdbc-connection-pools | grep -q "^${POOL_NAME}$"; then
     --steadypoolsize "${DB_POOL_MIN_SIZE}" \
     --maxpoolsize "${DB_POOL_MAX_SIZE}" \
     --maxwait "${DB_POOL_MAX_WAIT_MS}" \
-    --property "serverName=${DB_HOST}:portNumber=${DB_PORT}:databaseName=${POSTGRES_DB}:user=${POSTGRES_USER}:password=${POSTGRES_PASSWORD}" \
+    --property "serverName=${DB_HOST}:portNumber=${DB_PORT}:databaseName=${POSTGRES_DB}:user=${POSTGRES_USER}:password=${POSTGRES_PASSWORD}:stringType=unspecified" \
     "${POOL_NAME}"
 fi
 

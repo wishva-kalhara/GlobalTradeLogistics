@@ -51,9 +51,19 @@
                     <defaultLibBundleDir>lib</defaultLibBundleDir>
                     <modules>
                         <jarModule>
+                            <!--
+                                bundleDir intentionally omitted so this falls
+                                back to defaultLibBundleDir (lib/) — a jar's
+                                META-INF/persistence.xml (core's, here) is
+                                only automatically visible EAR-wide by plain
+                                unitName when it lives in the EAR's library
+                                directory, per the Java EE deployment spec.
+                                Bundling it at the EAR root instead ("/")
+                                breaks unitName resolution for every other
+                                module's @PersistenceContext.
+                            -->
                             <groupId>me.wishva.globalTradeLogistics</groupId>
                             <artifactId>global-trade-logistics-core</artifactId>
-                            <bundleDir>/</bundleDir>
                         </jarModule>
                         <webModule>
                             <groupId>me.wishva.globalTradeLogistics</groupId>
