@@ -14,6 +14,12 @@ set -euo pipefail
 : "${HTTPS_PORT:?HTTPS_PORT is required (see .desired-state/app.env)}"
 : "${JNDI_NAME:?JNDI_NAME is required (see .desired-state/app.env)}"
 : "${POOL_NAME:?POOL_NAME is required (see .desired-state/app.env)}"
+: "${DB_POOL_MIN_SIZE:?DB_POOL_MIN_SIZE is required (see .desired-state/app.env)}"
+: "${DB_POOL_MAX_SIZE:?DB_POOL_MAX_SIZE is required (see .desired-state/app.env)}"
+: "${DB_POOL_MAX_WAIT_MS:?DB_POOL_MAX_WAIT_MS is required (see .desired-state/app.env)}"
+: "${JWT_SECRET:?JWT_SECRET is required (see .desired-state/app.env)}"
+: "${NOTIFICATION_TOPIC_CF_JNDI:?NOTIFICATION_TOPIC_CF_JNDI is required (see .desired-state/app.env)}"
+: "${NOTIFICATION_TOPIC_JNDI:?NOTIFICATION_TOPIC_JNDI is required (see .desired-state/app.env)}"
 
 ASADMIN="${GLASSFISH_HOME}/bin/asadmin"
 DOMAIN="domain1"
@@ -26,17 +32,33 @@ echo "[entrypoint] configuring listeners"
 "${ASADMIN}" set server-config.network-config.network-listeners.network-listener.http-listener-1.port="${HTTP_PORT}"
 "${ASADMIN}" set server-config.network-config.network-listeners.network-listener.http-listener-2.port="${HTTPS_PORT}"
 
-echo "[entrypoint] configuring JDBC connection pool for PostgreSQL (${DB_HOST}:${DB_PORT}/${POSTGRES_DB})"
+echo "[entrypoint] configuring JDBC connection pool for PostgreSQL (${DB_HOST}:${DB_PORT}/${POSTGRES_DB}, steady=${DB_POOL_MIN_SIZE} max=${DB_POOL_MAX_SIZE})"
 if ! "${ASADMIN}" list-jdbc-connection-pools | grep -q "^${POOL_NAME}$"; then
   "${ASADMIN}" create-jdbc-connection-pool \
     --datasourceclassname org.postgresql.ds.PGSimpleDataSource \
     --restype javax.sql.DataSource \
+    --steadypoolsize "${DB_POOL_MIN_SIZE}" \
+    --maxpoolsize "${DB_POOL_MAX_SIZE}" \
+    --maxwait "${DB_POOL_MAX_WAIT_MS}" \
     --property "serverName=${DB_HOST}:portNumber=${DB_PORT}:databaseName=${POSTGRES_DB}:user=${POSTGRES_USER}:password=${POSTGRES_PASSWORD}" \
     "${POOL_NAME}"
 fi
 
 if ! "${ASADMIN}" list-jdbc-resources | grep -q "^${JNDI_NAME}$"; then
   "${ASADMIN}" create-jdbc-resource --connectionpoolid "${POOL_NAME}" "${JNDI_NAME}"
+fi
+
+# Pulled forward from Phase 5/9 (notification-svc) so Phase 1's OTP/onboarding
+# flows can publish EmailNotifications end-to-end. The physical destination
+# and connection factory ride on GlassFish's built-in OpenMQ (jmsra) — no
+# external broker container needed.
+echo "[entrypoint] configuring JMS notification topic (${NOTIFICATION_TOPIC_JNDI})"
+if ! "${ASADMIN}" list-jms-resources | grep -q "^${NOTIFICATION_TOPIC_CF_JNDI}$"; then
+  "${ASADMIN}" create-jms-resource --restype jakarta.jms.ConnectionFactory "${NOTIFICATION_TOPIC_CF_JNDI}"
+fi
+
+if ! "${ASADMIN}" list-jms-resources | grep -q "^${NOTIFICATION_TOPIC_JNDI}$"; then
+  "${ASADMIN}" create-jms-resource --restype jakarta.jms.Topic --property Name=notification.email.send "${NOTIFICATION_TOPIC_JNDI}"
 fi
 
 echo "[entrypoint] deploying ${EAR_FILE}"
