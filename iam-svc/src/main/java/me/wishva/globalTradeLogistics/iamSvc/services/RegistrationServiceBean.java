@@ -32,7 +32,7 @@ public class RegistrationServiceBean implements IRegistrationService {
     private EntityManager em;
 
     @Override
-    public AuthResult signUpCustomer(String email, String fullName, String mobile1, String address, String country, String regionKey)
+    public AuthResult signUpCustomer(String email, String fullName, String mobile1, String address, String country)
             throws EmailAlreadyRegisteredException {
         long existing = em.createNamedQuery("Customer.countByEmail", Long.class)
                 .setParameter("email", email)
@@ -47,7 +47,6 @@ public class RegistrationServiceBean implements IRegistrationService {
         customer.setMobile1(mobile1);
         customer.setAddress(address);
         customer.setCountry(country);
-        customer.setRegionKey(regionKey);
         customer.setIsActive("true");
         em.persist(customer);
 

@@ -63,12 +63,12 @@ public class AdminResource {
     @POST
     @Path("/customers")
     public Response registerCustomer(RegisterCustomerBody body) throws UnauthorizedAccessException {
-        if (body == null || body.getEmail() == null || body.getFullName() == null || body.getRegionKey() == null) {
-            throw new BadRequestException("email, fullName and regionKey are required");
+        if (body == null || body.getEmail() == null || body.getFullName() == null) {
+            throw new BadRequestException("email and fullName are required");
         }
 
         userAdminService.registerCustomer(
-                body.getEmail(), body.getFullName(), body.getMobile1(), body.getAddress(), body.getCountry(), body.getRegionKey());
+                body.getEmail(), body.getFullName(), body.getMobile1(), body.getAddress(), body.getCountry());
         return Response.status(Response.Status.CREATED).build();
     }
 

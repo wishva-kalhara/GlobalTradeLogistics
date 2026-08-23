@@ -52,14 +52,13 @@ public class UserAdminServiceBean implements IUserAdminService {
 
     @Override
     @RequiresRole(Role.ADMIN)
-    public void registerCustomer(String email, String fullName, String mobile1, String address, String country, String regionKey) {
+    public void registerCustomer(String email, String fullName, String mobile1, String address, String country) {
         Customer customer = new Customer();
         customer.setEmail(email);
         customer.setFullName(fullName);
         customer.setMobile1(mobile1);
         customer.setAddress(address);
         customer.setCountry(country);
-        customer.setRegionKey(regionKey);
         customer.setIsActive("true");
         em.persist(customer);
 

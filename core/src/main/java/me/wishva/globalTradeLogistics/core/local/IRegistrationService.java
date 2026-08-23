@@ -14,7 +14,7 @@ import me.wishva.globalTradeLogistics.core.exception.EmailAlreadyRegisteredExcep
 @Local
 public interface IRegistrationService {
 
-    AuthResult signUpCustomer(String email, String fullName, String mobile1, String address, String country, String regionKey)
+    AuthResult signUpCustomer(String email, String fullName, String mobile1, String address, String country)
             throws EmailAlreadyRegisteredException;
 
     AuthResult signUpSupplier(String email, String fullName, String mobile1, String address, String country)

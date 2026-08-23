@@ -17,7 +17,7 @@ public interface IUserAdminService {
 
     void createUser(String email, String fullName, Role role) throws UnauthorizedAccessException;
 
-    void registerCustomer(String email, String fullName, String mobile1, String address, String country, String regionKey)
+    void registerCustomer(String email, String fullName, String mobile1, String address, String country)
             throws UnauthorizedAccessException;
 
     void registerSupplier(String email, String fullName, String mobile1, String address, String country)

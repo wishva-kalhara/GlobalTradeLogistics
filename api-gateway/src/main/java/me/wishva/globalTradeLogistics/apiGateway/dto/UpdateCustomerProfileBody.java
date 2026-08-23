@@ -13,5 +13,4 @@ public class UpdateCustomerProfileBody {
     private String mobile2;
     private String address;
     private String country;
-    private String regionKey;
 }

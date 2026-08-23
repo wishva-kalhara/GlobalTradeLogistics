@@ -66,7 +66,4 @@ public class Customer {
 
     @Column(name = "country")
     private String country;
-
-    @Column(name = "regions_region_key", nullable = false)
-    private String regionKey;
 }

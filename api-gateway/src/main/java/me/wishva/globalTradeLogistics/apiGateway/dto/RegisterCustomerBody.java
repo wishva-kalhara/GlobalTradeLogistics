@@ -14,5 +14,4 @@ public class RegisterCustomerBody {
     private String mobile1;
     private String address;
     private String country;
-    private String regionKey;
 }

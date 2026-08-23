@@ -1,12 +1,6 @@
 -- PostgreSQL translation of schema.sql (MySQL Workbench source of truth).
 -- Regenerate by hand if schema.sql changes.
 
-CREATE TABLE IF NOT EXISTS regions (
-  region_key VARCHAR(45) NOT NULL,
-  region_name VARCHAR(45) NOT NULL,
-  PRIMARY KEY (region_key)
-);
-
 CREATE TABLE IF NOT EXISTS customers (
   user_id SERIAL NOT NULL,
   email VARCHAR(45) NOT NULL,
@@ -16,15 +10,8 @@ CREATE TABLE IF NOT EXISTS customers (
   mobile_2 VARCHAR(45) NULL,
   address VARCHAR(45) NULL,
   country VARCHAR(45) NULL,
-  regions_region_key VARCHAR(45) NOT NULL,
-  PRIMARY KEY (user_id),
-  CONSTRAINT fk_customers_regions1
-    FOREIGN KEY (regions_region_key)
-    REFERENCES regions (region_key)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION
+  PRIMARY KEY (user_id)
 );
-CREATE INDEX IF NOT EXISTS fk_customers_regions1_idx ON customers (regions_region_key);
 
 CREATE TABLE IF NOT EXISTS products (
   product_id SERIAL NOT NULL,
@@ -135,15 +122,8 @@ CREATE INDEX IF NOT EXISTS fk_grns_products1_idx ON grns (products_product_id);
 CREATE TABLE IF NOT EXISTS wearhouses (
   wearhous_id INT NOT NULL,
   country VARCHAR(45) NOT NULL,
-  regions_region_key VARCHAR(45) NOT NULL,
-  PRIMARY KEY (wearhous_id),
-  CONSTRAINT fk_wearhouses_regions1
-    FOREIGN KEY (regions_region_key)
-    REFERENCES regions (region_key)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION
+  PRIMARY KEY (wearhous_id)
 );
-CREATE INDEX IF NOT EXISTS fk_wearhouses_regions1_idx ON wearhouses (regions_region_key);
 
 CREATE TABLE IF NOT EXISTS inventory (
   inventory_id INT NOT NULL,

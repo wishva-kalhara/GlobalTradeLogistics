@@ -36,17 +36,10 @@
                     <input type="text" id="address"
                            class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30"/>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="mb-1 block text-sm font-medium text-gray-700">Country</label>
-                        <input type="text" id="country"
-                               class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30"/>
-                    </div>
-                    <div>
-                        <label class="mb-1 block text-sm font-medium text-gray-700">Region key</label>
-                        <input type="text" id="regionKey" required
-                               class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30"/>
-                    </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Country</label>
+                    <input type="text" id="country"
+                           class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30"/>
                 </div>
                 <button type="submit" class="w-full rounded-md bg-green-600 px-4 py-2.5 font-medium text-white hover:bg-green-700">Save profile</button>
             </form>
@@ -72,7 +65,6 @@
             mobile2: document.getElementById("mobile2").value,
             address: document.getElementById("address").value,
             country: document.getElementById("country").value,
-            regionKey: document.getElementById("regionKey").value,
         };
 
         try {

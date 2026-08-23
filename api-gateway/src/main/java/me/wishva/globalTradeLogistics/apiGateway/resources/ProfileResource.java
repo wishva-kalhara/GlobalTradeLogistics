@@ -30,7 +30,7 @@ public class ProfileResource {
     @Path("/customer")
     public Response updateCustomerProfile(UpdateCustomerProfileBody body) throws UnauthorizedAccessException, UnknownPrincipalException {
         profileService.updateCustomerProfile(
-                body.getMobile1(), body.getMobile2(), body.getAddress(), body.getCountry(), body.getRegionKey());
+                body.getMobile1(), body.getMobile2(), body.getAddress(), body.getCountry());
         return Response.noContent().build();
     }
 

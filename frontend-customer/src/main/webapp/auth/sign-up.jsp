@@ -28,17 +28,10 @@
                     <input type="text" id="fullName" required
                            class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30"/>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="mb-1 block text-sm font-medium text-gray-700">Mobile</label>
-                        <input type="text" id="mobile1"
-                               class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30"/>
-                    </div>
-                    <div>
-                        <label class="mb-1 block text-sm font-medium text-gray-700">Region key</label>
-                        <input type="text" id="regionKey" required
-                               class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30"/>
-                    </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Mobile</label>
+                    <input type="text" id="mobile1"
+                           class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30"/>
                 </div>
                 <div>
                     <label class="mb-1 block text-sm font-medium text-gray-700">Address</label>
@@ -68,7 +61,6 @@
             mobile1: document.getElementById("mobile1").value,
             address: document.getElementById("address").value,
             country: document.getElementById("country").value,
-            regionKey: document.getElementById("regionKey").value,
         };
 
         try {

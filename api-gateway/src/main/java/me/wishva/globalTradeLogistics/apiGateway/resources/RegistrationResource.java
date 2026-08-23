@@ -31,12 +31,12 @@ public class RegistrationResource {
     @POST
     @Path("/customer")
     public AuthResponseBody signUpCustomer(RegisterCustomerBody body) throws EmailAlreadyRegisteredException {
-        if (body == null || body.getEmail() == null || body.getFullName() == null || body.getRegionKey() == null) {
-            throw new BadRequestException("email, fullName and regionKey are required");
+        if (body == null || body.getEmail() == null || body.getFullName() == null) {
+            throw new BadRequestException("email and fullName are required");
         }
 
         AuthResult result = registrationService.signUpCustomer(
-                body.getEmail(), body.getFullName(), body.getMobile1(), body.getAddress(), body.getCountry(), body.getRegionKey());
+                body.getEmail(), body.getFullName(), body.getMobile1(), body.getAddress(), body.getCountry());
         return new AuthResponseBody(result.getToken(), result.getEmail(), result.getRole().name());
     }
 

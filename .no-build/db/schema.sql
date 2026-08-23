@@ -15,16 +15,6 @@ CREATE SCHEMA IF NOT EXISTS `global_trade_log_corp` DEFAULT CHARACTER SET utf8 ;
 USE `global_trade_log_corp` ;
 
 -- -----------------------------------------------------
--- Table `global_trade_log_corp`.`regions`
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `global_trade_log_corp`.`regions` (
-  `region_key` VARCHAR(45) NOT NULL,
-  `region_name` VARCHAR(45) NOT NULL,
-  PRIMARY KEY (`region_key`))
-ENGINE = InnoDB;
-
-
--- -----------------------------------------------------
 -- Table `global_trade_log_corp`.`customers`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `global_trade_log_corp`.`customers` (
@@ -36,14 +26,7 @@ CREATE TABLE IF NOT EXISTS `global_trade_log_corp`.`customers` (
   `mobile_2` VARCHAR(45) NULL,
   `address` VARCHAR(45) NULL,
   `country` VARCHAR(45) NULL,
-  `regions_region_key` VARCHAR(45) NOT NULL,
-  PRIMARY KEY (`user_id`),
-  INDEX `fk_customers_regions1_idx` (`regions_region_key` ASC) VISIBLE,
-  CONSTRAINT `fk_customers_regions1`
-    FOREIGN KEY (`regions_region_key`)
-    REFERENCES `global_trade_log_corp`.`regions` (`region_key`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+  PRIMARY KEY (`user_id`))
 ENGINE = InnoDB;
 
 
@@ -183,14 +166,7 @@ ENGINE = InnoDB;
 CREATE TABLE IF NOT EXISTS `global_trade_log_corp`.`wearhouses` (
   `wearhous_id` INT NOT NULL,
   `country` VARCHAR(45) NOT NULL,
-  `regions_region_key` VARCHAR(45) NOT NULL,
-  PRIMARY KEY (`wearhous_id`),
-  INDEX `fk_wearhouses_regions1_idx` (`regions_region_key` ASC) VISIBLE,
-  CONSTRAINT `fk_wearhouses_regions1`
-    FOREIGN KEY (`regions_region_key`)
-    REFERENCES `global_trade_log_corp`.`regions` (`region_key`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+  PRIMARY KEY (`wearhous_id`))
 ENGINE = InnoDB;
 
 
