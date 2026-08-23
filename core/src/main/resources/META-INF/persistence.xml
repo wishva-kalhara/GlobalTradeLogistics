@@ -17,6 +17,10 @@
         <class>me.wishva.globalTradeLogistics.core.model.Inventory</class>
         <class>me.wishva.globalTradeLogistics.core.model.Order</class>
         <class>me.wishva.globalTradeLogistics.core.model.OrderItem</class>
+        <class>me.wishva.globalTradeLogistics.core.model.PurchaseOrder</class>
+        <class>me.wishva.globalTradeLogistics.core.model.Grn</class>
+        <class>me.wishva.globalTradeLogistics.core.model.SupplierProvidingProduct</class>
+        <class>me.wishva.globalTradeLogistics.core.model.AuditRecord</class>
         <exclude-unlisted-classes>false</exclude-unlisted-classes>
         <properties>
             <!--

@@ -5,27 +5,28 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import me.wishva.globalTradeLogistics.core.enums.OrderStatus;
 
 import java.io.Serializable;
 import java.time.Instant;
-import java.util.List;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class OrderSummary implements Serializable, Auditable {
+public class PurchaseOrderSummary implements Serializable, Auditable {
 
-    private Integer orderId;
-    private Instant orderedAt;
+    private Integer poId;
+    private Integer supplierId;
+    private Integer productId;
+    private String productName;
+    private Integer requestingQty;
     private Double totalPrice;
-    private OrderStatus status;
-    private List<OrderLineSummary> items;
+    private boolean completed;
+    private Instant createdAt;
 
     @Override
     @JsonbTransient
     public String getAuditReference() {
-        return String.valueOf(orderId);
+        return String.valueOf(poId);
     }
 }

@@ -16,6 +16,8 @@
         <module>core</module>
         <module>iam-svc</module>
         <module>order-svc</module>
+        <module>inventory-svc</module>
+        <module>procurement-svc</module>
         <module>frontend-customer</module>
         <module>frontend-seller</module>
         <module>frontend-app</module>

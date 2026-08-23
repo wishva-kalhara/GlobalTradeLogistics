@@ -24,12 +24,25 @@ public class AuditEvent implements Serializable {
     private String action;
     private String actorEmail;
     private String reference;
+    private String details;
+    /** {@code audit_records.type} — defaults to {@code resource} when not given explicitly. */
+    private String type;
     private Instant occurredAt = Instant.now();
 
     public AuditEvent(String resource, String action, String actorEmail, String reference) {
+        this(resource, action, actorEmail, reference, null, resource);
+    }
+
+    public AuditEvent(String resource, String action, String actorEmail, String reference, String details) {
+        this(resource, action, actorEmail, reference, details, resource);
+    }
+
+    public AuditEvent(String resource, String action, String actorEmail, String reference, String details, String type) {
         this.resource = resource;
         this.action = action;
         this.actorEmail = actorEmail;
         this.reference = reference;
+        this.details = details;
+        this.type = type;
     }
 }

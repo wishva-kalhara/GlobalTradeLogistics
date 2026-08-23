@@ -17,4 +17,12 @@ import java.lang.annotation.Target;
 public @interface Audited {
 
     String resource();
+
+    /**
+     * The {@code audit_records.type} value, distinct from {@code resource}
+     * when a bean records more than one kind of event (e.g. procurement-svc
+     * distinguishes plain PO/GRN activity from the weekly vendor-performance
+     * recompute). Defaults to {@link #resource()} when not given.
+     */
+    String type() default "";
 }
