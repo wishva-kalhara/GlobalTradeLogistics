@@ -33,6 +33,14 @@ public final class AppConfig {
     public static final String NOTIFICATION_TOPIC_CF_JNDI =
             optional("NOTIFICATION_TOPIC_CF_JNDI", "jms/notification.email.send.factory");
 
+    /** JNDI name of the audit-log JMS Topic (monitoring-svc, Phase 6). */
+    public static final String AUDIT_TOPIC_JNDI =
+            optional("AUDIT_TOPIC_JNDI", "jms/monitoring.audit.log");
+
+    /** JNDI name of the connection factory for {@link #AUDIT_TOPIC_JNDI}. */
+    public static final String AUDIT_TOPIC_CF_JNDI =
+            optional("AUDIT_TOPIC_CF_JNDI", "jms/monitoring.audit.log.factory");
+
     private AppConfig() {
     }
 

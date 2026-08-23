@@ -39,6 +39,12 @@
         </dependency>
         <dependency>
             <groupId>me.wishva.globalTradeLogistics</groupId>
+            <artifactId>global-trade-logistics-order-svc</artifactId>
+            <version>1.0.0</version>
+            <type>ejb</type>
+        </dependency>
+        <dependency>
+            <groupId>me.wishva.globalTradeLogistics</groupId>
             <artifactId>global-trade-logistics-frontend-customer</artifactId>
             <version>1.0.0</version>
             <type>war</type>
@@ -91,6 +97,10 @@
                         <ejbModule>
                             <groupId>me.wishva.globalTradeLogistics</groupId>
                             <artifactId>global-trade-logistics-iam-svc</artifactId>
+                        </ejbModule>
+                        <ejbModule>
+                            <groupId>me.wishva.globalTradeLogistics</groupId>
+                            <artifactId>global-trade-logistics-order-svc</artifactId>
                         </ejbModule>
                         <webModule>
                             <groupId>me.wishva.globalTradeLogistics</groupId>

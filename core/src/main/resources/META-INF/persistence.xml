@@ -12,6 +12,11 @@
         <class>me.wishva.globalTradeLogistics.core.model.Supplier</class>
         <class>me.wishva.globalTradeLogistics.core.model.OtpCode</class>
         <class>me.wishva.globalTradeLogistics.core.model.Country</class>
+        <class>me.wishva.globalTradeLogistics.core.model.Product</class>
+        <class>me.wishva.globalTradeLogistics.core.model.Warehouse</class>
+        <class>me.wishva.globalTradeLogistics.core.model.Inventory</class>
+        <class>me.wishva.globalTradeLogistics.core.model.Order</class>
+        <class>me.wishva.globalTradeLogistics.core.model.OrderItem</class>
         <exclude-unlisted-classes>false</exclude-unlisted-classes>
         <properties>
             <!--
