@@ -8,7 +8,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
 
-@WebServlet("/api/v1/healthz")
+@WebServlet("/v1/healthz")
 public class HealthzController extends HttpServlet {
 
     @Override

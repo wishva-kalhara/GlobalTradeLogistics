@@ -7,6 +7,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.NamedQueries;
 import jakarta.persistence.NamedQuery;
 import jakarta.persistence.Table;
 import lombok.Getter;
@@ -24,9 +25,14 @@ import me.wishva.globalTradeLogistics.core.enums.Role;
  */
 @Entity
 @Table(name = "users")
-@NamedQuery(
-        name = "User.findActiveByEmail",
-        query = "SELECT u FROM User u WHERE u.email = :email AND u.active = true")
+@NamedQueries({
+        @NamedQuery(
+                name = "User.findActiveByEmail",
+                query = "SELECT u FROM User u WHERE u.email = :email AND u.active = true"),
+        @NamedQuery(
+                name = "User.findAll",
+                query = "SELECT u FROM User u ORDER BY u.fullName")
+})
 @Getter
 @Setter
 @NoArgsConstructor

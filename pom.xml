@@ -15,6 +15,9 @@
         <module>api-gateway</module>
         <module>core</module>
         <module>iam-svc</module>
+        <module>frontend-customer</module>
+        <module>frontend-seller</module>
+        <module>frontend-app</module>
     </modules>
 
     <properties>

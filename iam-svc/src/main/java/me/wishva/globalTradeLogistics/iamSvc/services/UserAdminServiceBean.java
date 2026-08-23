@@ -5,6 +5,7 @@ import jakarta.interceptor.Interceptors;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import me.wishva.globalTradeLogistics.core.dto.EmailNotification;
+import me.wishva.globalTradeLogistics.core.dto.UserSummary;
 import me.wishva.globalTradeLogistics.core.enums.EmailType;
 import me.wishva.globalTradeLogistics.core.enums.Role;
 import me.wishva.globalTradeLogistics.core.interceptor.RequiresRole;
@@ -16,7 +17,9 @@ import me.wishva.globalTradeLogistics.core.model.Supplier;
 import me.wishva.globalTradeLogistics.core.model.User;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Implements the Admin Provisions a Staff User (1.12), Customer Onboarding
@@ -78,5 +81,15 @@ public class UserAdminServiceBean implements IUserAdminService {
 
         NotificationPublisher.publish(new EmailNotification(
                 EmailType.SUPPLIER_ONBOARDING, email, fullName, Collections.emptyMap()));
+    }
+
+    @Override
+    @RequiresRole(Role.ADMIN)
+    public List<UserSummary> listUsers() {
+        return em.createNamedQuery("User.findAll", User.class)
+                .getResultList()
+                .stream()
+                .map(u -> new UserSummary(u.getEmail(), u.getFullName(), u.getRole()))
+                .collect(Collectors.toList());
     }
 }

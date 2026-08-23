@@ -37,6 +37,24 @@
             <version>1.0.0</version>
             <type>ejb</type>
         </dependency>
+        <dependency>
+            <groupId>me.wishva.globalTradeLogistics</groupId>
+            <artifactId>global-trade-logistics-frontend-customer</artifactId>
+            <version>1.0.0</version>
+            <type>war</type>
+        </dependency>
+        <dependency>
+            <groupId>me.wishva.globalTradeLogistics</groupId>
+            <artifactId>global-trade-logistics-frontend-seller</artifactId>
+            <version>1.0.0</version>
+            <type>war</type>
+        </dependency>
+        <dependency>
+            <groupId>me.wishva.globalTradeLogistics</groupId>
+            <artifactId>global-trade-logistics-frontend-app</artifactId>
+            <version>1.0.0</version>
+            <type>war</type>
+        </dependency>
     </dependencies>
 
     <build>
@@ -68,12 +86,27 @@
                         <webModule>
                             <groupId>me.wishva.globalTradeLogistics</groupId>
                             <artifactId>global-trade-logistics-api-gateway</artifactId>
-                            <contextRoot>global-trade-logistics/api</contextRoot>
+                            <contextRoot>/api</contextRoot>
                         </webModule>
                         <ejbModule>
                             <groupId>me.wishva.globalTradeLogistics</groupId>
                             <artifactId>global-trade-logistics-iam-svc</artifactId>
                         </ejbModule>
+                        <webModule>
+                            <groupId>me.wishva.globalTradeLogistics</groupId>
+                            <artifactId>global-trade-logistics-frontend-customer</artifactId>
+                            <contextRoot>/</contextRoot>
+                        </webModule>
+                        <webModule>
+                            <groupId>me.wishva.globalTradeLogistics</groupId>
+                            <artifactId>global-trade-logistics-frontend-seller</artifactId>
+                            <contextRoot>/seller</contextRoot>
+                        </webModule>
+                        <webModule>
+                            <groupId>me.wishva.globalTradeLogistics</groupId>
+                            <artifactId>global-trade-logistics-frontend-app</artifactId>
+                            <contextRoot>/app</contextRoot>
+                        </webModule>
                     </modules>
                 </configuration>
             </plugin>

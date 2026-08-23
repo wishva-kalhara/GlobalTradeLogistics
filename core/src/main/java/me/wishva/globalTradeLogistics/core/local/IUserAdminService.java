@@ -1,8 +1,11 @@
 package me.wishva.globalTradeLogistics.core.local;
 
 import jakarta.ejb.Local;
+import me.wishva.globalTradeLogistics.core.dto.UserSummary;
 import me.wishva.globalTradeLogistics.core.enums.Role;
 import me.wishva.globalTradeLogistics.core.exception.UnauthorizedAccessException;
+
+import java.util.List;
 
 /**
  * Admin-only onboarding operations. Every method requires
@@ -19,4 +22,6 @@ public interface IUserAdminService {
 
     void registerSupplier(String email, String fullName, String mobile1, String address, String country)
             throws UnauthorizedAccessException;
+
+    List<UserSummary> listUsers() throws UnauthorizedAccessException;
 }

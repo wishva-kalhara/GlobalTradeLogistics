@@ -3,17 +3,22 @@ package me.wishva.globalTradeLogistics.apiGateway.resources;
 import jakarta.ejb.EJB;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import me.wishva.globalTradeLogistics.apiGateway.dto.CreateUserBody;
 import me.wishva.globalTradeLogistics.apiGateway.dto.RegisterCustomerBody;
 import me.wishva.globalTradeLogistics.apiGateway.dto.RegisterSupplierBody;
 import me.wishva.globalTradeLogistics.apiGateway.security.Secured;
+import me.wishva.globalTradeLogistics.core.dto.UserSummary;
 import me.wishva.globalTradeLogistics.core.enums.Role;
 import me.wishva.globalTradeLogistics.core.exception.UnauthorizedAccessException;
 import me.wishva.globalTradeLogistics.core.local.IUserAdminService;
+
+import java.util.List;
 
 /**
  * Flows: Admin Provisions a Staff User (1.12), Customer Onboarding (1.13),
@@ -29,6 +34,13 @@ public class AdminResource {
 
     @EJB
     private IUserAdminService userAdminService;
+
+    @GET
+    @Path("/users")
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<UserSummary> listUsers() throws UnauthorizedAccessException {
+        return userAdminService.listUsers();
+    }
 
     @POST
     @Path("/users")

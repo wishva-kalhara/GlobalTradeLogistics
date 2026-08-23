@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.NamedQueries;
 import jakarta.persistence.NamedQuery;
 import jakarta.persistence.Table;
 import lombok.Getter;
@@ -18,9 +19,14 @@ import lombok.Setter;
  */
 @Entity
 @Table(name = "customers")
-@NamedQuery(
-        name = "Customer.findActiveByEmail",
-        query = "SELECT c FROM Customer c WHERE c.email = :email AND c.isActive = 'true'")
+@NamedQueries({
+        @NamedQuery(
+                name = "Customer.findActiveByEmail",
+                query = "SELECT c FROM Customer c WHERE c.email = :email AND c.isActive = 'true'"),
+        @NamedQuery(
+                name = "Customer.countByEmail",
+                query = "SELECT COUNT(c) FROM Customer c WHERE c.email = :email")
+})
 @Getter
 @Setter
 @NoArgsConstructor
