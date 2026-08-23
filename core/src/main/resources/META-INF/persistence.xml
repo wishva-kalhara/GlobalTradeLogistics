@@ -13,10 +13,16 @@
         <class>me.wishva.globalTradeLogistics.core.model.OtpCode</class>
         <exclude-unlisted-classes>false</exclude-unlisted-classes>
         <properties>
-            <property name="jakarta.persistence.schema-generation.database.action" value="none"/>
-            <!-- Schema is hand-managed via .no-build/db/*.sql — never let
-                 Hibernate create/alter/validate it. -->
-            <property name="hibernate.hbm2ddl.auto" value="none"/>
+            <!--
+                The 15 pre-existing SCM tables (schema.postgres.sql) are
+                treated as a given legacy schema, seeded once via SQL and
+                never touched by Hibernate. Everything WE added on top of it
+                (users, otp_codes, the email-uniqueness constraints) is
+                schema-owned by these entities instead — "update" creates
+                missing tables/columns/constraints on startup, no hand-written
+                migration SQL for our own additive pieces.
+            -->
+            <property name="hibernate.hbm2ddl.auto" value="update"/>
             <!-- GlassFish is a fork of the old Sun Java System Application
                  Server lineage; Hibernate's SunOneJtaPlatform targets that
                  same JTA/TransactionManager JNDI lookup and works unchanged

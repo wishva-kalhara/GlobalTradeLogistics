@@ -9,9 +9,12 @@ services:
       - "5432:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
+      # This is the only hand-written SQL in the stack: the 15-table legacy
+      # SCM schema the assignment says we integrate with. Everything we
+      # added ourselves (users, otp_codes, email-uniqueness constraints) is
+      # schema-owned by Hibernate (hibernate.hbm2ddl.auto=update) instead —
+      # see core's persistence.xml.
       - ./.no-build/db/schema.postgres.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
-      - ./.no-build/db/02-auth.postgres.sql:/docker-entrypoint-initdb.d/02-auth.sql:ro
-      - ./.no-build/db/03-unique-emails.postgres.sql:/docker-entrypoint-initdb.d/03-unique-emails.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s

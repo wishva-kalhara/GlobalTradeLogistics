@@ -17,7 +17,15 @@ import me.wishva.globalTradeLogistics.core.enums.Role;
 
 /**
  * Maps the additive {@code users} table (internal staff, admin-provisioned,
- * no password column — see {@code .no-build/db/02-auth.postgres.sql}).
+ * no password column). Schema-owned by Hibernate ({@code hibernate.hbm2ddl.auto=update}
+ * in persistence.xml) — this table is created from this entity, not a
+ * hand-written SQL migration.
+ * <p>
+ * {@code role} is a plain VARCHAR ({@code @Enumerated(STRING)}), not a
+ * native Postgres enum type — Hibernate's {@code update} mode reliably
+ * creates/evolves plain columns; a native enum column would need
+ * {@code @JdbcTypeCode(SqlTypes.NAMED_ENUM)} and its own DDL-generation
+ * quirks, not worth the risk here.
  * <p>
  * {@code @Getter}/{@code @Setter}/{@code @NoArgsConstructor} only — no
  * Lombok {@code @EqualsAndHashCode}/{@code @Data} on JPA entities, to avoid

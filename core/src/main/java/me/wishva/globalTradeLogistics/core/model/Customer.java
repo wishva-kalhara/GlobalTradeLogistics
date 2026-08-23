@@ -16,6 +16,15 @@ import lombok.Setter;
  * Maps the existing {@code customers} table (schema.postgres.sql). Note
  * {@code is_active} is a legacy VARCHAR("true"/"false"), not a boolean —
  * kept as-is per the "don't redesign the existing schema" constraint.
+ * <p>
+ * {@code email}'s {@code unique=true} only affects DDL Hibernate would
+ * generate for a brand-new table — {@code hibernate.hbm2ddl.auto=update}
+ * does NOT retrofit constraints onto an already-existing table/column
+ * (verified: it adds missing tables/columns only). Since we're avoiding
+ * hand-written migration SQL entirely, email-uniqueness for this table is
+ * enforced at the application layer only (see
+ * {@code RegistrationServiceBean}'s pre-insert {@code countByEmail} check)
+ * — a known, accepted small TOCTOU gap at this project's scope.
  */
 @Entity
 @Table(name = "customers")
@@ -37,7 +46,7 @@ public class Customer {
     @Column(name = "user_id")
     private Integer userId;
 
-    @Column(name = "email", nullable = false)
+    @Column(name = "email", nullable = false, unique = true)
     private String email;
 
     @Column(name = "is_active", nullable = false)

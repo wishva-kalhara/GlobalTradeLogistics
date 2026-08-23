@@ -15,10 +15,11 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * Maps the additive {@code otp_codes} table (see
- * {@code .no-build/db/02-auth.postgres.sql}). Only the SHA-256 hash of the
- * one-time code is ever persisted — the plaintext code exists only in the
- * outbound {@code EmailNotification} JMS message.
+ * Maps the additive {@code otp_codes} table — schema-owned by Hibernate
+ * ({@code hibernate.hbm2ddl.auto=update} in persistence.xml creates this
+ * table from this entity, no hand-written migration SQL). Only the SHA-256
+ * hash of the one-time code is ever persisted — the plaintext code exists
+ * only in the outbound {@code EmailNotification} JMS message.
  */
 @Entity
 @Table(name = "otp_codes")
