@@ -41,6 +41,16 @@ public final class AppConfig {
     public static final String AUDIT_TOPIC_CF_JNDI =
             optional("AUDIT_TOPIC_CF_JNDI", "jms/monitoring.audit.log.factory");
 
+    /**
+     * Email/full name for the bootstrap ADMIN account — see
+     * {@code AdminSeedBean}. There is no other way to get an ADMIN into an
+     * empty {@code users} table ({@code IUserAdminService.createUser}
+     * itself requires an existing ADMIN), so this has to be a deploy-time
+     * seed rather than an API call.
+     */
+    public static final String ADMIN_EMAIL = optional("ADMIN_EMAIL", "admin@globaltradelogistics.local");
+    public static final String ADMIN_FULL_NAME = optional("ADMIN_FULL_NAME", "System Administrator");
+
     private AppConfig() {
     }
 
