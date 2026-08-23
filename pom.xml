@@ -18,6 +18,7 @@
         <module>order-svc</module>
         <module>inventory-svc</module>
         <module>procurement-svc</module>
+        <module>logistics-svc</module>
         <module>frontend-customer</module>
         <module>frontend-seller</module>
         <module>frontend-app</module>

@@ -41,6 +41,14 @@ public final class AppConfig {
     public static final String AUDIT_TOPIC_CF_JNDI =
             optional("AUDIT_TOPIC_CF_JNDI", "jms/monitoring.audit.log.factory");
 
+    /** JNDI name of the idempotency-check Queue (monitoring-svc, Phase 6). */
+    public static final String IDEMPOTENCY_QUEUE_JNDI =
+            optional("IDEMPOTENCY_QUEUE_JNDI", "jms/monitoring.idempotency.check");
+
+    /** JNDI name of the connection factory for {@link #IDEMPOTENCY_QUEUE_JNDI}. */
+    public static final String IDEMPOTENCY_QUEUE_CF_JNDI =
+            optional("IDEMPOTENCY_QUEUE_CF_JNDI", "jms/monitoring.idempotency.check.factory");
+
     /**
      * Email/full name for the bootstrap ADMIN account — see
      * {@code AdminSeedBean}. There is no other way to get an ADMIN into an
