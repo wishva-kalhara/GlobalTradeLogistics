@@ -13,9 +13,9 @@ import me.wishva.globalTradeLogistics.core.exception.UnknownPrincipalException;
 @Local
 public interface IProfileService {
 
-    void updateCustomerProfile(String mobile1, String mobile2, String address, String country)
+    void updateCustomerProfile(String fullName, String mobile1, String mobile2, String address, String country)
             throws UnauthorizedAccessException, UnknownPrincipalException;
 
-    void updateSupplierProfile(String mobile1, String mobile2, String address, String country)
+    void updateSupplierProfile(String fullName, String mobile1, String mobile2, String address, String country)
             throws UnauthorizedAccessException, UnknownPrincipalException;
 }

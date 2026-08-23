@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS `global_trade_log_corp`.`customers` (
   `user_id` INT NOT NULL AUTO_INCREMENT,
   `email` VARCHAR(45) NOT NULL,
   `is_active` VARCHAR(45) NOT NULL DEFAULT 'true',
-  `full_name` VARCHAR(45) NOT NULL,
+  `full_name` VARCHAR(45) NULL,
   `mobile_1` VARCHAR(45) NULL,
   `mobile_2` VARCHAR(45) NULL,
   `address` VARCHAR(45) NULL,
@@ -92,10 +92,10 @@ CREATE TABLE IF NOT EXISTS `global_trade_log_corp`.`suppliers` (
   `supplier_id` INT NOT NULL AUTO_INCREMENT,
   `email` VARCHAR(45) NOT NULL,
   `is_active` VARCHAR(45) NOT NULL DEFAULT 'true',
-  `full_name` VARCHAR(45) NOT NULL,
-  `mobile_1` VARCHAR(45) NOT NULL,
+  `full_name` VARCHAR(45) NULL,
+  `mobile_1` VARCHAR(45) NULL,
   `mobile_2` VARCHAR(45) NULL,
-  `address` VARCHAR(45) NOT NULL,
+  `address` VARCHAR(45) NULL,
   `country` VARCHAR(45) NOT NULL,
   PRIMARY KEY (`supplier_id`))
 ENGINE = InnoDB;

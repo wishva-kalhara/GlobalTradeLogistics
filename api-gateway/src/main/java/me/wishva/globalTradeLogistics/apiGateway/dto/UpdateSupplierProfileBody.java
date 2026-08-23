@@ -9,6 +9,7 @@ import lombok.Setter;
 @NoArgsConstructor
 public class UpdateSupplierProfileBody {
 
+    private String fullName;
     private String mobile1;
     private String mobile2;
     private String address;

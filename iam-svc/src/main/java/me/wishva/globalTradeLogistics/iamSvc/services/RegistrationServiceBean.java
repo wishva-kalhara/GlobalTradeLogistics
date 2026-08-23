@@ -32,8 +32,7 @@ public class RegistrationServiceBean implements IRegistrationService {
     private EntityManager em;
 
     @Override
-    public AuthResult signUpCustomer(String email, String fullName, String mobile1, String address, String country)
-            throws EmailAlreadyRegisteredException {
+    public AuthResult signUpCustomer(String email, String country) throws EmailAlreadyRegisteredException {
         long existing = em.createNamedQuery("Customer.countByEmail", Long.class)
                 .setParameter("email", email)
                 .getSingleResult();
@@ -43,23 +42,19 @@ public class RegistrationServiceBean implements IRegistrationService {
 
         Customer customer = new Customer();
         customer.setEmail(email);
-        customer.setFullName(fullName);
-        customer.setMobile1(mobile1);
-        customer.setAddress(address);
         customer.setCountry(country);
         customer.setIsActive("true");
         em.persist(customer);
 
         NotificationPublisher.publish(new EmailNotification(
-                EmailType.CUSTOMER_ONBOARDING, email, fullName, Collections.emptyMap()));
+                EmailType.CUSTOMER_ONBOARDING, email, null, Collections.emptyMap()));
 
         String token = JwtService.issueToken(email, Role.CUSTOMER, AppConfig.JWT_SECRET, TOKEN_TTL_SECONDS);
         return new AuthResult(token, email, Role.CUSTOMER);
     }
 
     @Override
-    public AuthResult signUpSupplier(String email, String fullName, String mobile1, String address, String country)
-            throws EmailAlreadyRegisteredException {
+    public AuthResult signUpSupplier(String email, String country) throws EmailAlreadyRegisteredException {
         long existing = em.createNamedQuery("Supplier.countByEmail", Long.class)
                 .setParameter("email", email)
                 .getSingleResult();
@@ -69,15 +64,12 @@ public class RegistrationServiceBean implements IRegistrationService {
 
         Supplier supplier = new Supplier();
         supplier.setEmail(email);
-        supplier.setFullName(fullName);
-        supplier.setMobile1(mobile1);
-        supplier.setAddress(address);
         supplier.setCountry(country);
         supplier.setIsActive("true");
         em.persist(supplier);
 
         NotificationPublisher.publish(new EmailNotification(
-                EmailType.SUPPLIER_ONBOARDING, email, fullName, Collections.emptyMap()));
+                EmailType.SUPPLIER_ONBOARDING, email, null, Collections.emptyMap()));
 
         String token = JwtService.issueToken(email, Role.VENDOR_REP, AppConfig.JWT_SECRET, TOKEN_TTL_SECONDS);
         return new AuthResult(token, email, Role.VENDOR_REP);

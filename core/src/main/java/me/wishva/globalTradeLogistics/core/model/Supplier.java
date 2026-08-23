@@ -25,6 +25,13 @@ import lombok.Setter;
  * enforced at the application layer only (see
  * {@code RegistrationServiceBean}'s pre-insert {@code countByEmail} check)
  * — a known, accepted small TOCTOU gap at this project's scope.
+ * <p>
+ * {@code full_name}/{@code mobile_1}/{@code address} were originally
+ * {@code NOT NULL} in the legacy schema; relaxed to nullable (schema
+ * change, hand-edited in schema.sql/schema.postgres.sql since Hibernate's
+ * {@code hbm2ddl.auto=update} can't loosen an existing constraint) because
+ * self-service sign-up only collects email + country — everything else is
+ * filled in afterward via {@code IProfileService}.
  */
 @Entity
 @Table(name = "suppliers")
@@ -52,16 +59,16 @@ public class Supplier {
     @Column(name = "is_active", nullable = false)
     private String isActive = "true";
 
-    @Column(name = "full_name", nullable = false)
+    @Column(name = "full_name")
     private String fullName;
 
-    @Column(name = "mobile_1", nullable = false)
+    @Column(name = "mobile_1")
     private String mobile1;
 
     @Column(name = "mobile_2")
     private String mobile2;
 
-    @Column(name = "address", nullable = false)
+    @Column(name = "address")
     private String address;
 
     @Column(name = "country", nullable = false)

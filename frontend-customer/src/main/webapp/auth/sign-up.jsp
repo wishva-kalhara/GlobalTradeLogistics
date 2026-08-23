@@ -24,25 +24,13 @@
                            class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30"/>
                 </div>
                 <div>
-                    <label class="mb-1 block text-sm font-medium text-gray-700">Full name</label>
-                    <input type="text" id="fullName" required
-                           class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30"/>
-                </div>
-                <div>
-                    <label class="mb-1 block text-sm font-medium text-gray-700">Mobile</label>
-                    <input type="text" id="mobile1"
-                           class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30"/>
-                </div>
-                <div>
-                    <label class="mb-1 block text-sm font-medium text-gray-700">Address</label>
-                    <input type="text" id="address"
-                           class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30"/>
-                </div>
-                <div>
                     <label class="mb-1 block text-sm font-medium text-gray-700">Country</label>
-                    <input type="text" id="country"
-                           class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30"/>
+                    <select id="country" required
+                            class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30">
+                        <option value="">Select a country&hellip;</option>
+                    </select>
                 </div>
+                <p class="text-xs text-gray-500">You'll fill in your name, mobile, and address after you sign in for the first time.</p>
                 <button type="submit" class="w-full rounded-md bg-green-600 px-4 py-2.5 font-medium text-white hover:bg-green-700">Create account</button>
             </form>
         </div>
@@ -50,6 +38,22 @@
 </main>
 
 <script>
+    (async function loadCountries() {
+        try {
+            const res = await fetch("/api/v1/countries");
+            const countries = await res.json();
+            const select = document.getElementById("country");
+            countries.forEach(function (c) {
+                const option = document.createElement("option");
+                option.value = c.name;
+                option.textContent = c.name;
+                select.appendChild(option);
+            });
+        } catch (err) {
+            console.error("Could not load countries", err);
+        }
+    })();
+
     document.getElementById("sign-up-form").addEventListener("submit", async function (e) {
         e.preventDefault();
         const errorEl = document.getElementById("alert-error");
@@ -57,9 +61,6 @@
 
         const body = {
             email: document.getElementById("email").value,
-            fullName: document.getElementById("fullName").value,
-            mobile1: document.getElementById("mobile1").value,
-            address: document.getElementById("address").value,
             country: document.getElementById("country").value,
         };
 

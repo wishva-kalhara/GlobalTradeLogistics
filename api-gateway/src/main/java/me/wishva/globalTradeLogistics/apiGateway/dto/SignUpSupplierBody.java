@@ -4,14 +4,12 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/** Self-service "Create Account" — deliberately minimal (email + country only). */
 @Getter
 @Setter
 @NoArgsConstructor
-public class UpdateCustomerProfileBody {
+public class SignUpSupplierBody {
 
-    private String fullName;
-    private String mobile1;
-    private String mobile2;
-    private String address;
+    private String email;
     private String country;
 }

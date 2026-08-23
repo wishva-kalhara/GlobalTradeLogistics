@@ -30,7 +30,7 @@ public class ProfileServiceBean implements IProfileService {
 
     @Override
     @RequiresRole(Role.CUSTOMER)
-    public void updateCustomerProfile(String mobile1, String mobile2, String address, String country)
+    public void updateCustomerProfile(String fullName, String mobile1, String mobile2, String address, String country)
             throws UnknownPrincipalException {
         String email = CurrentPrincipalHolder.get().getEmail();
         List<Customer> matches = em.createNamedQuery("Customer.findActiveByEmail", Customer.class)
@@ -41,6 +41,7 @@ public class ProfileServiceBean implements IProfileService {
         }
 
         Customer customer = matches.get(0);
+        customer.setFullName(fullName);
         customer.setMobile1(mobile1);
         customer.setMobile2(mobile2);
         customer.setAddress(address);
@@ -49,7 +50,7 @@ public class ProfileServiceBean implements IProfileService {
 
     @Override
     @RequiresRole(Role.VENDOR_REP)
-    public void updateSupplierProfile(String mobile1, String mobile2, String address, String country)
+    public void updateSupplierProfile(String fullName, String mobile1, String mobile2, String address, String country)
             throws UnknownPrincipalException {
         String email = CurrentPrincipalHolder.get().getEmail();
         List<Supplier> matches = em.createNamedQuery("Supplier.findActiveByEmail", Supplier.class)
@@ -60,6 +61,7 @@ public class ProfileServiceBean implements IProfileService {
         }
 
         Supplier supplier = matches.get(0);
+        supplier.setFullName(fullName);
         supplier.setMobile1(mobile1);
         supplier.setMobile2(mobile2);
         supplier.setAddress(address);

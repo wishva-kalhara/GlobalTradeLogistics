@@ -19,6 +19,11 @@
             <div id="alert-info" class="mb-4 hidden rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700"></div>
 
             <form id="profile-form" class="space-y-4">
+                <div>
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Business / full name</label>
+                    <input type="text" id="fullName" required
+                           class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30"/>
+                </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="mb-1 block text-sm font-medium text-gray-700">Mobile 1</label>
@@ -38,8 +43,10 @@
                 </div>
                 <div>
                     <label class="mb-1 block text-sm font-medium text-gray-700">Country</label>
-                    <input type="text" id="country"
-                           class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30"/>
+                    <select id="country"
+                            class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30">
+                        <option value="">Select a country&hellip;</option>
+                    </select>
                 </div>
                 <button type="submit" class="w-full rounded-md bg-green-600 px-4 py-2.5 font-medium text-white hover:bg-green-700">Save profile</button>
             </form>
@@ -53,6 +60,22 @@
         window.location.href = "/seller/auth/login.jsp";
     }
 
+    (async function loadCountries() {
+        try {
+            const res = await fetch("/api/v1/countries");
+            const countries = await res.json();
+            const select = document.getElementById("country");
+            countries.forEach(function (c) {
+                const option = document.createElement("option");
+                option.value = c.name;
+                option.textContent = c.name;
+                select.appendChild(option);
+            });
+        } catch (err) {
+            console.error("Could not load countries", err);
+        }
+    })();
+
     document.getElementById("profile-form").addEventListener("submit", async function (e) {
         e.preventDefault();
         const errorEl = document.getElementById("alert-error");
@@ -61,6 +84,7 @@
         infoEl.classList.add("hidden");
 
         const body = {
+            fullName: document.getElementById("fullName").value,
             mobile1: document.getElementById("mobile1").value,
             mobile2: document.getElementById("mobile2").value,
             address: document.getElementById("address").value,

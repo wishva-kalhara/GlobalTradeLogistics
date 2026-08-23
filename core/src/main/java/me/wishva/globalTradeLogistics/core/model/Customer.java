@@ -25,6 +25,11 @@ import lombok.Setter;
  * enforced at the application layer only (see
  * {@code RegistrationServiceBean}'s pre-insert {@code countByEmail} check)
  * — a known, accepted small TOCTOU gap at this project's scope.
+ * <p>
+ * {@code full_name}/{@code mobile_1}/{@code address} are legacy-nullable
+ * columns and were left {@code NOT NULL}-free on purpose: self-service
+ * sign-up only collects email + country (see {@code IRegistrationService}),
+ * everything else is filled in afterward via {@code IProfileService}.
  */
 @Entity
 @Table(name = "customers")
@@ -52,7 +57,7 @@ public class Customer {
     @Column(name = "is_active", nullable = false)
     private String isActive = "true";
 
-    @Column(name = "full_name", nullable = false)
+    @Column(name = "full_name")
     private String fullName;
 
     @Column(name = "mobile_1")
