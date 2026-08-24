@@ -8,6 +8,8 @@ import me.wishva.globalTradeLogistics.core.dto.EmailNotification;
 import me.wishva.globalTradeLogistics.core.dto.OrderItemRequest;
 import me.wishva.globalTradeLogistics.core.dto.OrderLineSummary;
 import me.wishva.globalTradeLogistics.core.dto.OrderSummary;
+import me.wishva.globalTradeLogistics.core.dto.ProductSalesSummary;
+import me.wishva.globalTradeLogistics.core.dto.SalesSummary;
 import me.wishva.globalTradeLogistics.core.enums.EmailType;
 import me.wishva.globalTradeLogistics.core.enums.OrderStatus;
 import me.wishva.globalTradeLogistics.core.enums.Role;
@@ -29,6 +31,7 @@ import me.wishva.globalTradeLogistics.core.security.CurrentPrincipalHolder;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -136,6 +139,41 @@ public class OrderServiceBean implements IOrderService {
             summaries.add(toSummary(order));
         }
         return summaries;
+    }
+
+    @Override
+    @RequiresRole({Role.ADMIN, Role.COORDINATOR})
+    public SalesSummary getSalesSummary() {
+        List<Order> orders = em.createQuery("SELECT o FROM Order o", Order.class).getResultList();
+
+        double totalSales = 0.0;
+        Map<String, Integer> ordersByStatus = new LinkedHashMap<>();
+        for (Order order : orders) {
+            totalSales += order.getTotalPrice();
+            ordersByStatus.merge(order.getStatus().name(), 1, Integer::sum);
+        }
+
+        List<OrderItem> items = em.createQuery("SELECT oi FROM OrderItem oi", OrderItem.class).getResultList();
+        Map<Integer, double[]> perProduct = new LinkedHashMap<>();
+        for (OrderItem item : items) {
+            double[] agg = perProduct.computeIfAbsent(item.getProductsProductId(), key -> new double[2]);
+            agg[0] += item.getQty();
+            agg[1] += item.getQty() * item.getUnitPrice();
+        }
+
+        List<ProductSalesSummary> topProducts = new ArrayList<>();
+        for (Map.Entry<Integer, double[]> entry : perProduct.entrySet()) {
+            Product product = em.find(Product.class, entry.getKey());
+            topProducts.add(new ProductSalesSummary(
+                    entry.getKey(), product != null ? product.getName() : null,
+                    (int) entry.getValue()[0], entry.getValue()[1]));
+        }
+        topProducts.sort((a, b) -> Double.compare(b.getRevenue(), a.getRevenue()));
+        if (topProducts.size() > 5) {
+            topProducts = topProducts.subList(0, 5);
+        }
+
+        return new SalesSummary(totalSales, orders.size(), ordersByStatus, topProducts);
     }
 
     private OrderSummary toSummary(Order order) {

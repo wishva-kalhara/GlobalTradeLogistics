@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GlobalTrade Logistics — Staff Console</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 </head>
 <body class="h-full">
 <%@ include file="/WEB-INF/includes/nav.jsp" %>
@@ -24,6 +25,38 @@
         <p class="mt-1 text-sm text-gray-500">Signed in as <span id="dashboard-role" class="font-medium text-gray-700"></span>.</p>
         <div id="dashboard-cards" class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2"></div>
         <p id="no-functions" class="mt-6 hidden text-sm text-gray-500">Your role doesn't have any console actions yet.</p>
+
+        <div id="analytics-section" class="mt-10 hidden">
+            <h2 class="text-lg font-semibold text-gray-900">Analytics</h2>
+            <div id="analytics-error" class="mt-3 hidden rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"></div>
+
+            <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                    <p class="text-sm text-gray-500">Total sales</p>
+                    <p id="stat-total-sales" class="mt-1 text-2xl font-semibold text-gray-900">—</p>
+                </div>
+                <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                    <p class="text-sm text-gray-500">Total orders</p>
+                    <p id="stat-total-orders" class="mt-1 text-2xl font-semibold text-gray-900">—</p>
+                </div>
+            </div>
+
+            <div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                    <h3 class="text-sm font-medium text-gray-700">Orders by status</h3>
+                    <canvas id="chart-orders-by-status" class="mt-3"></canvas>
+                </div>
+                <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                    <h3 class="text-sm font-medium text-gray-700">Top products by revenue</h3>
+                    <canvas id="chart-top-products" class="mt-3"></canvas>
+                </div>
+                <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm lg:col-span-2">
+                    <h3 class="text-sm font-medium text-gray-700">Vendor performance — on-time delivery rate</h3>
+                    <p id="vendor-performance-empty" class="mt-3 hidden text-sm text-gray-500">No vendor performance reports yet — they're generated automatically once a week.</p>
+                    <canvas id="chart-vendor-performance" class="mt-3"></canvas>
+                </div>
+            </div>
+        </div>
     </div>
 </main>
 
@@ -32,12 +65,10 @@
     const ROLE_FUNCTIONS = {
         ADMIN: [
             { href: "/app/app-user-management.jsp", label: "Application User Management", description: "Onboard staff accounts, or register a customer/supplier directly." },
-            { href: "/app/vendor-performance.jsp", label: "Vendor Performance Report", description: "See on-time delivery scores per supplier." },
             { href: "/app/inventory.jsp", label: "Warehouse Inventory", description: "Check current stock levels by warehouse." },
         ],
         COORDINATOR: [
             { href: "/app/purchase-orders/create.jsp", label: "Create Purchase Order", description: "Order more stock from a supplier." },
-            { href: "/app/vendor-performance.jsp", label: "Vendor Performance Report", description: "See on-time delivery scores per supplier." },
             { href: "/app/inventory.jsp", label: "Warehouse Inventory", description: "Check current stock levels by warehouse." },
         ],
         WAREHOUSE_MANAGER: [
@@ -70,8 +101,109 @@
                 container.appendChild(card);
             });
         }
+        if (session.role === "ADMIN" || session.role === "COORDINATOR") {
+            loadAnalytics(session);
+        }
     } else {
         document.getElementById("guest-card").classList.remove("hidden");
+    }
+
+    async function loadAnalytics(session) {
+        document.getElementById("analytics-section").classList.remove("hidden");
+        const errorEl = document.getElementById("analytics-error");
+        const authHeaders = { "Authorization": "Bearer " + session.token };
+
+        try {
+            const [salesRes, vendorRes] = await Promise.all([
+                fetch("/api/v1/admin/sales-summary", { headers: authHeaders }),
+                fetch("/api/v1/admin/vendor-performance", { headers: authHeaders }),
+            ]);
+            if (salesRes.status === 401 || vendorRes.status === 401) {
+                localStorage.removeItem("gtl.app.session");
+                window.location.href = "/app/login.jsp";
+                return;
+            }
+            if (!salesRes.ok) {
+                const data = await salesRes.json().catch(function () { return {}; });
+                throw new Error(data.error || ("status " + salesRes.status));
+            }
+            renderSales(await salesRes.json());
+
+            if (vendorRes.ok) {
+                renderVendorPerformance(await vendorRes.json());
+            }
+        } catch (err) {
+            errorEl.textContent = "Could not load analytics: " + err.message;
+            errorEl.classList.remove("hidden");
+        }
+    }
+
+    function renderSales(summary) {
+        document.getElementById("stat-total-sales").textContent = "$" + summary.totalSales.toFixed(2);
+        document.getElementById("stat-total-orders").textContent = summary.totalOrders;
+
+        const statusLabels = Object.keys(summary.ordersByStatus || {});
+        new Chart(document.getElementById("chart-orders-by-status"), {
+            type: "bar",
+            data: {
+                labels: statusLabels,
+                datasets: [{
+                    label: "Orders",
+                    data: statusLabels.map(function (label) { return summary.ordersByStatus[label]; }),
+                    backgroundColor: "rgba(22, 163, 74, 0.6)",
+                }],
+            },
+            options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } },
+        });
+
+        const topProducts = summary.topProducts || [];
+        new Chart(document.getElementById("chart-top-products"), {
+            type: "bar",
+            data: {
+                labels: topProducts.map(function (p) { return p.productName || ("Product " + p.productId); }),
+                datasets: [{
+                    label: "Revenue",
+                    data: topProducts.map(function (p) { return p.revenue; }),
+                    backgroundColor: "rgba(37, 99, 235, 0.6)",
+                }],
+            },
+            options: { indexAxis: "y", plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } },
+        });
+    }
+
+    function renderVendorPerformance(reports) {
+        if (reports.length === 0) {
+            document.getElementById("vendor-performance-empty").classList.remove("hidden");
+            return;
+        }
+
+        const labels = [];
+        const rates = [];
+        reports.forEach(function (r) {
+            const match = /\(([\d.]+)%\)/.exec(r.details || "");
+            if (match) {
+                labels.push("Supplier " + r.reference);
+                rates.push(parseFloat(match[1]));
+            }
+        });
+
+        if (labels.length === 0) {
+            document.getElementById("vendor-performance-empty").classList.remove("hidden");
+            return;
+        }
+
+        new Chart(document.getElementById("chart-vendor-performance"), {
+            type: "bar",
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: "On-time %",
+                    data: rates,
+                    backgroundColor: "rgba(217, 119, 6, 0.6)",
+                }],
+            },
+            options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100 } } },
+        });
     }
 </script>
 </body>

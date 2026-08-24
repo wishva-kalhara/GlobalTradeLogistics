@@ -3,6 +3,7 @@ package me.wishva.globalTradeLogistics.core.local;
 import jakarta.ejb.Local;
 import me.wishva.globalTradeLogistics.core.dto.OrderItemRequest;
 import me.wishva.globalTradeLogistics.core.dto.OrderSummary;
+import me.wishva.globalTradeLogistics.core.dto.SalesSummary;
 import me.wishva.globalTradeLogistics.core.exception.InsufficientInventoryException;
 import me.wishva.globalTradeLogistics.core.exception.OrderNotFoundException;
 import me.wishva.globalTradeLogistics.core.exception.UnauthorizedAccessException;
@@ -26,4 +27,7 @@ public interface IOrderService {
             throws OrderNotFoundException, UnauthorizedAccessException, UnknownPrincipalException;
 
     List<OrderSummary> listOrdersForCurrentCustomer() throws UnauthorizedAccessException, UnknownPrincipalException;
+
+    /** Store-wide sales aggregate for the staff dashboard (roles: ADMIN, COORDINATOR). */
+    SalesSummary getSalesSummary() throws UnauthorizedAccessException;
 }

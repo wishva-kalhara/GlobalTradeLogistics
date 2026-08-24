@@ -13,9 +13,11 @@ import me.wishva.globalTradeLogistics.apiGateway.dto.CreateUserBody;
 import me.wishva.globalTradeLogistics.apiGateway.dto.RegisterCustomerBody;
 import me.wishva.globalTradeLogistics.apiGateway.dto.RegisterSupplierBody;
 import me.wishva.globalTradeLogistics.apiGateway.security.Secured;
+import me.wishva.globalTradeLogistics.core.dto.SalesSummary;
 import me.wishva.globalTradeLogistics.core.dto.UserSummary;
 import me.wishva.globalTradeLogistics.core.enums.Role;
 import me.wishva.globalTradeLogistics.core.exception.UnauthorizedAccessException;
+import me.wishva.globalTradeLogistics.core.local.IOrderService;
 import me.wishva.globalTradeLogistics.core.local.IUserAdminService;
 
 import java.util.List;
@@ -34,6 +36,16 @@ public class AdminController {
 
     @EJB
     private IUserAdminService userAdminService;
+
+    @EJB
+    private IOrderService orderService;
+
+    @GET
+    @Path("/sales-summary")
+    @Produces(MediaType.APPLICATION_JSON)
+    public SalesSummary getSalesSummary() throws UnauthorizedAccessException {
+        return orderService.getSalesSummary();
+    }
 
     @GET
     @Path("/users")
