@@ -1,18 +1,22 @@
 package me.wishva.globalTradeLogistics.apiGateway.controllers;
 
-import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.MediaType;
 
-import java.io.IOException;
+/**
+ * JAX-RS port of the original {@code @WebServlet} — every other endpoint in
+ * this module is a JAX-RS resource under {@code ApiApplication}'s
+ * {@code @ApplicationPath("/v1")}, so this is the one holdover made
+ * consistent (7.7).
+ */
+@Path("/healthz")
+public class HealthzController {
 
-@WebServlet("/v1/healthz")
-public class HealthzController extends HttpServlet {
-
-    @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        resp.getWriter().write("Up and running");
+    @GET
+    @Produces(MediaType.TEXT_PLAIN)
+    public String healthz() {
+        return "Up and running";
     }
 }

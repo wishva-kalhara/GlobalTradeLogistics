@@ -1,4 +1,4 @@
-package me.wishva.globalTradeLogistics.apiGateway.resources;
+package me.wishva.globalTradeLogistics.apiGateway.controllers;
 
 import jakarta.ejb.EJB;
 import jakarta.ws.rs.GET;
@@ -21,7 +21,7 @@ import java.util.List;
 @Path("/admin/vendor-performance")
 @Secured
 @Produces(MediaType.APPLICATION_JSON)
-public class VendorPerformanceResource {
+public class VendorPerformanceController {
 
     @EJB
     private IVendorPerformanceService vendorPerformanceService;

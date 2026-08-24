@@ -1,4 +1,4 @@
-package me.wishva.globalTradeLogistics.apiGateway.resources;
+package me.wishva.globalTradeLogistics.apiGateway.controllers;
 
 import jakarta.ejb.EJB;
 import jakarta.ws.rs.Consumes;
@@ -21,7 +21,7 @@ import me.wishva.globalTradeLogistics.core.local.IProfileService;
 @Path("/me")
 @Secured
 @Consumes(MediaType.APPLICATION_JSON)
-public class ProfileResource {
+public class ProfileController {
 
     @EJB
     private IProfileService profileService;

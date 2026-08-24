@@ -1,4 +1,4 @@
-package me.wishva.globalTradeLogistics.apiGateway.resources;
+package me.wishva.globalTradeLogistics.apiGateway.controllers;
 
 import jakarta.ejb.EJB;
 import jakarta.ws.rs.GET;
@@ -16,7 +16,7 @@ import java.util.List;
  */
 @Path("/countries")
 @Produces(MediaType.APPLICATION_JSON)
-public class CountryResource {
+public class CountryController {
 
     @EJB
     private ICountryService countryService;

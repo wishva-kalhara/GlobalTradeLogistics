@@ -1,4 +1,4 @@
-package me.wishva.globalTradeLogistics.apiGateway.resources;
+package me.wishva.globalTradeLogistics.apiGateway.controllers;
 
 import jakarta.ejb.EJB;
 import jakarta.ws.rs.BadRequestException;
@@ -24,7 +24,7 @@ import me.wishva.globalTradeLogistics.core.local.IRegistrationService;
 @Path("/auth/signup")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
-public class RegistrationResource {
+public class RegistrationController {
 
     @EJB
     private IRegistrationService registrationService;

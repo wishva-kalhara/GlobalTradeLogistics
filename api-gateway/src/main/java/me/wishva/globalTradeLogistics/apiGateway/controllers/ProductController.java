@@ -1,4 +1,4 @@
-package me.wishva.globalTradeLogistics.apiGateway.resources;
+package me.wishva.globalTradeLogistics.apiGateway.controllers;
 
 import jakarta.ejb.EJB;
 import jakarta.ws.rs.GET;
@@ -16,7 +16,7 @@ import java.util.List;
  */
 @Path("/products")
 @Produces(MediaType.APPLICATION_JSON)
-public class ProductResource {
+public class ProductController {
 
     @EJB
     private IProductService productService;

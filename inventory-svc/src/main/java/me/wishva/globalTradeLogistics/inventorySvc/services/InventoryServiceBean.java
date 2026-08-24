@@ -1,20 +1,32 @@
 package me.wishva.globalTradeLogistics.inventorySvc.services;
 
 import jakarta.ejb.Stateless;
+import jakarta.interceptor.Interceptors;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import me.wishva.globalTradeLogistics.core.dto.InventorySummary;
+import me.wishva.globalTradeLogistics.core.enums.Role;
 import me.wishva.globalTradeLogistics.core.exception.InsufficientInventoryException;
+import me.wishva.globalTradeLogistics.core.interceptor.RequiresRole;
+import me.wishva.globalTradeLogistics.core.interceptor.RequiresRoleInterceptor;
 import me.wishva.globalTradeLogistics.core.local.IInventoryService;
 import me.wishva.globalTradeLogistics.core.model.Inventory;
+import me.wishva.globalTradeLogistics.core.model.Product;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * See {@link IInventoryService}'s javadoc for the single-warehouse
- * simplification every method here relies on.
+ * simplification most methods here rely on. {@code checkStock}/
+ * {@code decrementStock}/{@code incrementStock} are called internally by
+ * other EJBs (never exposed directly over REST), so they're unguarded here;
+ * {@code listByWarehouse} is the one method a JAX-RS resource calls
+ * directly, hence the interceptor and {@code @RequiresRole}.
  */
 @Stateless
+@Interceptors(RequiresRoleInterceptor.class)
 public class InventoryServiceBean implements IInventoryService {
 
     @PersistenceContext(unitName = "globalTradeLogisticsPU")
@@ -48,6 +60,29 @@ public class InventoryServiceBean implements IInventoryService {
         }
         inventory.setQty(inventory.getQty() + qty);
         inventory.setLastUpdatedAt(Instant.now());
+    }
+
+    @Override
+    @RequiresRole({Role.WAREHOUSE_MANAGER, Role.COORDINATOR, Role.ADMIN})
+    public List<InventorySummary> listByWarehouse(Integer warehouseId) {
+        List<Inventory> stock = em.createNamedQuery("Inventory.findByWarehouse", Inventory.class)
+                .setParameter("warehouseId", warehouseId)
+                .getResultList();
+
+        List<InventorySummary> summaries = new ArrayList<>();
+        for (Inventory inventory : stock) {
+            Product product = em.find(Product.class, inventory.getProductsProductId());
+            summaries.add(new InventorySummary(
+                    inventory.getInventoryId(),
+                    inventory.getWarehousesWarehouseId(),
+                    inventory.getProductsProductId(),
+                    product != null ? product.getName() : null,
+                    inventory.getQty(),
+                    inventory.getReorderLevel(),
+                    inventory.getUnitPrice(),
+                    inventory.getLastUpdatedAt()));
+        }
+        return summaries;
     }
 
     private Inventory resolve(Integer productId) {

@@ -1,4 +1,4 @@
-package me.wishva.globalTradeLogistics.apiGateway.resources;
+package me.wishva.globalTradeLogistics.apiGateway.controllers;
 
 import jakarta.ejb.EJB;
 import jakarta.ws.rs.BadRequestException;
@@ -30,7 +30,7 @@ import java.util.List;
 @Path("/admin")
 @Secured
 @Consumes(MediaType.APPLICATION_JSON)
-public class AdminResource {
+public class AdminController {
 
     @EJB
     private IUserAdminService userAdminService;

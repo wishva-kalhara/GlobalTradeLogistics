@@ -1,4 +1,4 @@
-package me.wishva.globalTradeLogistics.apiGateway.resources;
+package me.wishva.globalTradeLogistics.apiGateway.controllers;
 
 import jakarta.ejb.EJB;
 import jakarta.ws.rs.BadRequestException;
@@ -23,7 +23,7 @@ import java.util.Map;
  * Unprotected — no {@code @Secured} — since these ARE the login flow.
  */
 @Path("/auth")
-public class AuthResource {
+public class AuthController {
 
     @EJB
     private IUsersService usersService;

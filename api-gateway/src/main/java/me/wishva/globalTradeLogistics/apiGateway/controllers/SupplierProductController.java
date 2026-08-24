@@ -1,4 +1,4 @@
-package me.wishva.globalTradeLogistics.apiGateway.resources;
+package me.wishva.globalTradeLogistics.apiGateway.controllers;
 
 import jakarta.ejb.EJB;
 import jakarta.ws.rs.BadRequestException;
@@ -22,7 +22,7 @@ import me.wishva.globalTradeLogistics.core.local.IPurchaseOrderService;
 @Path("/suppliers/me/products")
 @Secured
 @Consumes(MediaType.APPLICATION_JSON)
-public class SupplierProductResource {
+public class SupplierProductController {
 
     @EJB
     private IPurchaseOrderService purchaseOrderService;

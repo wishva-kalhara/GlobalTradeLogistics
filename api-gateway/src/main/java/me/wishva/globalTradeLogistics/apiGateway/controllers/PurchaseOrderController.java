@@ -1,4 +1,4 @@
-package me.wishva.globalTradeLogistics.apiGateway.resources;
+package me.wishva.globalTradeLogistics.apiGateway.controllers;
 
 import jakarta.ejb.EJB;
 import jakarta.ws.rs.BadRequestException;
@@ -32,7 +32,7 @@ import java.util.List;
 @Secured
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
-public class PurchaseOrderResource {
+public class PurchaseOrderController {
 
     @EJB
     private IPurchaseOrderService purchaseOrderService;

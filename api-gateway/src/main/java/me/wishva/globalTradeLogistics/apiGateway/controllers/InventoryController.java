@@ -1,0 +1,36 @@
+package me.wishva.globalTradeLogistics.apiGateway.controllers;
+
+import jakarta.ejb.EJB;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.MediaType;
+import me.wishva.globalTradeLogistics.apiGateway.security.Secured;
+import me.wishva.globalTradeLogistics.core.dto.InventorySummary;
+import me.wishva.globalTradeLogistics.core.exception.UnauthorizedAccessException;
+import me.wishva.globalTradeLogistics.core.local.IInventoryService;
+
+import java.util.List;
+
+/**
+ * Read-only per-warehouse stock view — a pure pass-through to
+ * inventory-svc's {@code IInventoryService.listByWarehouse}.
+ * {@code @RequiresRole({WAREHOUSE_MANAGER, COORDINATOR, ADMIN})} is enforced
+ * at the EJB layer; {@code @Secured} here only requires a valid JWT.
+ */
+@Path("/inventory")
+@Secured
+@Produces(MediaType.APPLICATION_JSON)
+public class InventoryController {
+
+    @EJB
+    private IInventoryService inventoryService;
+
+    @GET
+    @Path("/{warehouseId}")
+    public List<InventorySummary> listByWarehouse(@PathParam("warehouseId") Integer warehouseId)
+            throws UnauthorizedAccessException {
+        return inventoryService.listByWarehouse(warehouseId);
+    }
+}

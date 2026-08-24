@@ -21,7 +21,10 @@ import java.time.Instant;
 @NamedQueries({
         @NamedQuery(
                 name = "Inventory.findByProductOrderByQtyDesc",
-                query = "SELECT i FROM Inventory i WHERE i.productsProductId = :productId ORDER BY i.qty DESC")
+                query = "SELECT i FROM Inventory i WHERE i.productsProductId = :productId ORDER BY i.qty DESC"),
+        @NamedQuery(
+                name = "Inventory.findByWarehouse",
+                query = "SELECT i FROM Inventory i WHERE i.warehousesWarehouseId = :warehouseId ORDER BY i.inventoryId")
 })
 @Getter
 @Setter

@@ -1,4 +1,4 @@
-package me.wishva.globalTradeLogistics.apiGateway.resources;
+package me.wishva.globalTradeLogistics.apiGateway.controllers;
 
 import jakarta.ejb.EJB;
 import jakarta.ws.rs.BadRequestException;
@@ -30,7 +30,7 @@ import me.wishva.globalTradeLogistics.core.local.IShipmentService;
 @Secured
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
-public class ShipmentResource {
+public class ShipmentController {
 
     @EJB
     private IShipmentService shipmentService;
