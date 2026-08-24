@@ -67,7 +67,7 @@
             const select = document.getElementById("country");
             countries.forEach(function (c) {
                 const option = document.createElement("option");
-                option.value = c.name;
+                option.value = c.code;
                 option.textContent = c.name;
                 select.appendChild(option);
             });
