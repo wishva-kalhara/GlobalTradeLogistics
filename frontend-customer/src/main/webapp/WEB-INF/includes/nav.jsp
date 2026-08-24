@@ -5,7 +5,7 @@
             <span class="text-lg font-semibold text-gray-900">GlobalTrade Logistics</span>
         </a>
         <div class="flex items-center gap-3 text-sm">
-            <a href="/products.jsp" class="font-medium text-gray-700 hover:text-green-700">Products</a>
+            <a href="/index.jsp" class="font-medium text-gray-700 hover:text-green-700">Products</a>
             <span id="nav-session" class="hidden text-gray-500 sm:inline"></span>
             <div id="nav-account" class="relative hidden">
                 <button id="nav-account-btn" type="button"

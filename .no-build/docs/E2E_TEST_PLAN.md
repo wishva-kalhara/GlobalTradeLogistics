@@ -59,7 +59,7 @@ These apply across many test cases below; each TC references the relevant `CC-*`
 ### TC-C01 — Guest landing page
 - **Pre:** logged out, no `gtl.customer.session`.
 - **Steps:** visit `/index.jsp`.
-- **Expected:** hero card shown with "Browse Products", "Log in" buttons and a "Create an account" link. Dashboard card hidden.
+- **Expected:** `index.jsp` *is* the product catalog (no separate placeholder/dashboard page) — the product grid loads and is browsable while logged out. Placing an order still requires being signed in (TC-C09).
 
 ### TC-C02 — Customer self-signup (happy path)
 - **Pre:** an email not already registered as a customer.
@@ -74,7 +74,7 @@ These apply across many test cases below; each TC references the relevant `CC-*`
 ### TC-C04 — Returning customer OTP login
 - **Pre:** an existing customer account (e.g. from TC-C02).
 - **Steps:** `/auth/login.jsp` → enter email → "Send OTP" → look up code (§1.4) → enter code → "Verify".
-- **Expected:** two-step form transitions from email entry to code entry with a confirmation message; on verify, redirects to `/index.jsp`, which now shows the signed-in dashboard (Browse Products / My Orders / Update Profile cards) — see CC-2.
+- **Expected:** two-step form transitions from email entry to code entry with a confirmation message; on verify, redirects to `/index.jsp` (the product catalog) — see CC-2. My Orders/Update Profile remain reachable via the nav's Account menu.
 
 ### TC-C05 — Profile completion
 - **Pre:** signed in as a customer.
@@ -82,14 +82,14 @@ These apply across many test cases below; each TC references the relevant `CC-*`
 - **Expected:** country dropdown is populated from the countries list on page load; success message shown after save; reloading the page keeps you signed in (CC-2).
 - **Also verify (CC-4):** if the stored token is deleted/corrupted in devtools before submitting, the save attempt redirects to login.
 
-### TC-C06 — Browse products
+### TC-C06 — Browse products (grid/search detail)
 - **Pre:** none (page is public — works logged out too).
-- **Steps:** `/products.jsp`.
+- **Steps:** `/index.jsp` (same page as TC-C01).
 - **Expected:** product grid loads (skeleton placeholders briefly, then real cards); each card shows name, description, price, and a stock badge ("In stock" / "Only N left" / "Out of stock"). Search box filters the grid client-side by name/description. Out-of-stock items have a disabled quantity control.
 
 ### TC-C07 — Place an order (single item)
 - **Pre:** signed in as a customer.
-- **Steps:** `/products.jsp` → increment one product's quantity via the +/− stepper or type a number → "Place Order" (bottom cart bar).
+- **Steps:** `/index.jsp` → increment one product's quantity via the +/− stepper or type a number → "Place Order" (bottom cart bar).
 - **Expected:** success message with the new order id and total; quantities reset to 0 after success; the sticky cart bar total updates live as quantities change before submitting.
 
 ### TC-C08 — Place an order (multi-item) and insufficient stock
@@ -100,7 +100,7 @@ These apply across many test cases below; each TC references the relevant `CC-*`
 
 ### TC-C09 — Place order while logged out
 - **Pre:** logged out.
-- **Steps:** on `/products.jsp`, pick a quantity and click "Place Order".
+- **Steps:** on `/index.jsp`, pick a quantity and click "Place Order".
 - **Expected:** redirected to `/auth/login.jsp` (CC-1) instead of an API error.
 
 ### TC-C10 — Order history
@@ -116,7 +116,7 @@ These apply across many test cases below; each TC references the relevant `CC-*`
 
 ## 5. `frontend-seller` Test Cases
 
-> **Known inconsistency (not a defect to "fix" during testing, just expected current behavior):** unlike the customer and staff frontends, the seller frontend has no dashboard yet — `index.jsp` is still a placeholder, and **both** login and signup redirect to `me/update-profile.jsp` every time (not just on first signup). Treat this as the current expected result, not a bug, when executing TC-SE04 below.
+> **Known inconsistency (not a defect to "fix" during testing, just expected current behavior):** unlike the customer frontend (whose `index.jsp` is the product catalog itself) and the staff frontend (whose `index.jsp` is a role-based dashboard), the seller frontend's `index.jsp` is still an unbuilt placeholder — **both** login and signup redirect to `me/update-profile.jsp` every time (not just on first signup). Treat this as the current expected result, not a bug, when executing TC-SE04 below.
 
 ### TC-SE01 — Guest landing page
 - **Steps:** visit `/seller/index.jsp` while logged out.
@@ -132,7 +132,7 @@ These apply across many test cases below; each TC references the relevant `CC-*`
 
 ### TC-SE04 — Returning seller OTP login
 - **Steps:** `/seller/auth/login.jsp` → OTP flow → verify.
-- **Expected:** redirects to `/seller/me/update-profile.jsp` (see the callout above — this differs from the customer frontend's dashboard redirect).
+- **Expected:** redirects to `/seller/me/update-profile.jsp` (see the callout above — the customer frontend instead redirects returning logins to its product-catalog landing page, `/index.jsp`).
 
 ### TC-SE05 — Profile completion
 - **Steps:** `/seller/me/update-profile.jsp` → business/full name, mobile 1/2, address, country → save.
@@ -282,9 +282,9 @@ These exercise a full business flow across multiple roles/frontends in sequence 
 5. As ADMIN/COORDINATOR, reload Warehouse Inventory — confirm the product's qty increased by the GRN quantity.
 
 ### TC-X02 — Full customer order chain
-1. As a CUSTOMER, note a product's current stock on `/products.jsp`.
+1. As a CUSTOMER, note a product's current stock on `/index.jsp`.
 2. Place an order for a few units of that product (TC-C07).
-3. Reload `/products.jsp` — confirm the displayed stock decreased by the ordered quantity.
+3. Reload `/index.jsp` — confirm the displayed stock decreased by the ordered quantity.
 4. Check `/orders.jsp` — the new order appears with status `PLACED`.
 5. As ADMIN/COORDINATOR, check Warehouse Inventory for the same product — confirm the same qty decrease is reflected there too (same underlying `inventory` table).
 
@@ -308,13 +308,13 @@ These exercise a full business flow across multiple roles/frontends in sequence 
 
 | TC | Frontend page(s) | Backend endpoint(s) | Role required |
 |---|---|---|---|
-| TC-C01 | `/index.jsp` | — | none |
+| TC-C01 | `/index.jsp` | `GET /products` | none |
 | TC-C02 | `/auth/sign-up.jsp` | `POST /auth/signup/customer` | none |
 | TC-C03 | `/auth/sign-up.jsp` | `POST /auth/signup/customer` | none |
 | TC-C04 | `/auth/login.jsp`, `/index.jsp` | `POST /auth/otp/request`, `POST /auth/otp/verify` | none → CUSTOMER |
 | TC-C05 | `/me/update-profile.jsp` | `GET /countries`, `PUT /me/customer` | CUSTOMER |
-| TC-C06 | `/products.jsp` | `GET /products` | none |
-| TC-C07/C08/C09 | `/products.jsp` | `POST /orders` | CUSTOMER |
+| TC-C06 | `/index.jsp` | `GET /products` | none |
+| TC-C07/C08/C09 | `/index.jsp` | `POST /orders` | CUSTOMER |
 | TC-C10 | `/orders.jsp` | `GET /orders` | CUSTOMER |
 | TC-C11 | nav include | — | CUSTOMER |
 | TC-SE01 | `/seller/index.jsp` | — | none |
@@ -343,7 +343,7 @@ These exercise a full business flow across multiple roles/frontends in sequence 
 | TC-A20 | `/app/index.jsp` | — | WORKER |
 | TC-A21 | devtools console | any role-gated endpoint | any |
 | TC-X01 | seller + staff pages above | `POST /suppliers/me/products`, `POST /purchase-orders`, `POST /purchase-orders/{id}/grn`, `GET /purchase-orders`, `GET /inventory/{id}` | VENDOR_REP, COORDINATOR, WAREHOUSE_MANAGER |
-| TC-X02 | `/products.jsp`, `/orders.jsp`, `/app/inventory.jsp` | `POST /orders`, `GET /orders`, `GET /products`, `GET /inventory/{id}` | CUSTOMER, (ADMIN/COORDINATOR to verify) |
+| TC-X02 | `/index.jsp`, `/orders.jsp`, `/app/inventory.jsp` | `POST /orders`, `GET /orders`, `GET /products`, `GET /inventory/{id}` | CUSTOMER, (ADMIN/COORDINATOR to verify) |
 | TC-X03 | `/app/shipments/manage.jsp` | all 4 shipment endpoints | CUSTOMS_AGENT |
 
 **Endpoint not covered by any TC (intentionally):** `GET /orders/{orderId}` — no dedicated detail page exists because `orders.jsp`'s list already renders every order's full line-item detail inline; a drill-down page would show nothing new.

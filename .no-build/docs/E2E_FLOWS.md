@@ -10,18 +10,19 @@ Companion to [`E2E_TEST_PLAN.md`](./E2E_TEST_PLAN.md) — one diagram per flow (
 
 ```mermaid
 flowchart TD
-    A[Visit /index.jsp as guest] --> B[Click Create an account]
-    B --> C[auth/sign-up.jsp: enter email + country]
-    C --> D[POST /api/v1/auth/signup/customer]
-    D --> E{Email already registered?}
-    E -- Yes --> F[409 error shown, stay on sign-up page]
-    E -- No --> G[customers row inserted, full_name/mobile/address left NULL]
-    G --> H[JWT issued - auto-login]
-    H --> I[Session stored in localStorage]
-    I --> J[Redirect to me/update-profile.jsp]
-    J --> K[Fill full name, mobile 1/2, address, country]
-    K --> L[PUT /api/v1/me/customer]
-    L --> M[Profile saved]
+    A["Visit /index.jsp as guest - it IS the product catalog, no separate placeholder page"] --> B[Click Log in in nav]
+    B --> C["auth/login.jsp: click New here? Create an account"]
+    C --> D[auth/sign-up.jsp: enter email + country]
+    D --> E[POST /api/v1/auth/signup/customer]
+    E --> F{Email already registered?}
+    F -- Yes --> G[409 error shown, stay on sign-up page]
+    F -- No --> H[customers row inserted, full_name/mobile/address left NULL]
+    H --> I[JWT issued - auto-login]
+    I --> J[Session stored in localStorage]
+    J --> K[Redirect to me/update-profile.jsp]
+    K --> L[Fill full name, mobile 1/2, address, country]
+    L --> M[PUT /api/v1/me/customer]
+    M --> N[Profile saved]
 ```
 
 ### Returning customer OTP login (TC-C04)
@@ -36,15 +37,14 @@ flowchart TD
     F --> G{Code valid, unexpired, unconsumed?}
     G -- No --> H[401 shown, stay on login page]
     G -- Yes --> I[JWT issued, session stored]
-    I --> J[Redirect to /index.jsp]
-    J --> K[Dashboard renders: Browse Products / My Orders / Update Profile]
+    I --> J["Redirect to /index.jsp - the product catalog (My Orders/Update Profile reachable via nav Account menu)"]
 ```
 
 ### Browse products (TC-C06)
 
 ```mermaid
 flowchart TD
-    A[Visit /products.jsp - logged in or guest] --> B[GET /api/v1/products]
+    A["Visit /index.jsp - logged in or guest, same page either way"] --> B[GET /api/v1/products]
     B --> C[Skeleton placeholders shown while loading]
     C --> D[Product grid rendered with stock badges]
     D --> E{User types in search box?}
@@ -59,7 +59,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A[On /products.jsp, adjust quantity via stepper] --> B[Sticky cart bar shows live item count + total]
+    A[On /index.jsp, adjust quantity via stepper] --> B[Sticky cart bar shows live item count + total]
     B --> C[Click Place Order]
     C --> D{Signed in?}
     D -- No --> E[Redirect to auth/login.jsp]
@@ -324,7 +324,7 @@ sequenceDiagram
 flowchart TD
     A[Customer notes a product's current stock] --> B[Places an order for a few units]
     B --> C[inventory.qty decremented; orders + order_items inserted]
-    C --> D[Reload products.jsp - stock reflects the decrease]
+    C --> D[Reload index.jsp - stock reflects the decrease]
     C --> E[Check orders.jsp - new order shows status PLACED]
     C --> F[ADMIN/COORDINATOR checks Warehouse Inventory - same qty decrease visible there too]
 ```

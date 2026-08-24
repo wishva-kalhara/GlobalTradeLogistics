@@ -15,7 +15,7 @@
             <h1 class="text-xl font-semibold text-gray-900">My Orders</h1>
             <p class="mt-1 text-sm text-gray-500">Everything you've ordered, most recent first.</p>
         </div>
-        <a href="/products.jsp"
+        <a href="/index.jsp"
            class="inline-flex items-center gap-1.5 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700">
             <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                 <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z"/>
@@ -39,7 +39,7 @@
         </svg>
         <p class="mt-3 text-sm font-medium text-gray-900">No orders yet</p>
         <p class="mt-1 text-sm text-gray-500">Browse the catalog to place your first one.</p>
-        <a href="/products.jsp" class="mt-4 inline-flex items-center rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700">Browse products</a>
+        <a href="/index.jsp" class="mt-4 inline-flex items-center rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700">Browse products</a>
     </div>
 
     <div id="orders-list" class="mt-6 space-y-4"></div>
