@@ -4,6 +4,7 @@ import jakarta.ejb.Stateless;
 import jakarta.interceptor.Interceptors;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import me.wishva.globalTradeLogistics.core.dto.CustomerProfileSummary;
 import me.wishva.globalTradeLogistics.core.enums.Role;
 import me.wishva.globalTradeLogistics.core.exception.UnknownPrincipalException;
 import me.wishva.globalTradeLogistics.core.interceptor.RequiresRole;
@@ -27,6 +28,23 @@ public class ProfileServiceBean implements IProfileService {
 
     @PersistenceContext(unitName = "globalTradeLogisticsPU")
     private EntityManager em;
+
+    @Override
+    @RequiresRole(Role.CUSTOMER)
+    public CustomerProfileSummary getCustomerProfile() throws UnknownPrincipalException {
+        String email = CurrentPrincipalHolder.get().getEmail();
+        List<Customer> matches = em.createNamedQuery("Customer.findActiveByEmail", Customer.class)
+                .setParameter("email", email)
+                .getResultList();
+        if (matches.isEmpty()) {
+            throw new UnknownPrincipalException("No active customer found for " + email);
+        }
+
+        Customer customer = matches.get(0);
+        return new CustomerProfileSummary(
+                customer.getEmail(), customer.getFullName(), customer.getMobile1(),
+                customer.getMobile2(), customer.getAddress(), customer.getCountry());
+    }
 
     @Override
     @RequiresRole(Role.CUSTOMER)

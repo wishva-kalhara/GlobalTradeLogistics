@@ -60,7 +60,7 @@
         window.location.href = "/auth/login.jsp";
     }
 
-    (async function loadCountries() {
+    async function loadCountries() {
         try {
             const res = await fetch("/api/v1/countries");
             const countries = await res.json();
@@ -74,6 +74,36 @@
         } catch (err) {
             console.error("Could not load countries", err);
         }
+    }
+
+    async function loadExistingProfile() {
+        try {
+            const res = await fetch("/api/v1/me/customer", {
+                cache: "no-store",
+                headers: { "Authorization": "Bearer " + session.token },
+            });
+            if (res.status === 401) {
+                localStorage.removeItem("gtl.customer.session");
+                window.location.href = "/auth/login.jsp";
+                return;
+            }
+            if (!res.ok) {
+                return;
+            }
+            const profile = await res.json();
+            document.getElementById("fullName").value = profile.fullName || "";
+            document.getElementById("mobile1").value = profile.mobile1 || "";
+            document.getElementById("mobile2").value = profile.mobile2 || "";
+            document.getElementById("address").value = profile.address || "";
+            document.getElementById("country").value = profile.country || "";
+        } catch (err) {
+            console.error("Could not load existing profile", err);
+        }
+    }
+
+    (async function init() {
+        await loadCountries();
+        await loadExistingProfile();
     })();
 
     document.getElementById("profile-form").addEventListener("submit", async function (e) {

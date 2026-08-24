@@ -1,6 +1,7 @@
 package me.wishva.globalTradeLogistics.core.local;
 
 import jakarta.ejb.Local;
+import me.wishva.globalTradeLogistics.core.dto.CustomerProfileSummary;
 import me.wishva.globalTradeLogistics.core.exception.UnauthorizedAccessException;
 import me.wishva.globalTradeLogistics.core.exception.UnknownPrincipalException;
 
@@ -12,6 +13,9 @@ import me.wishva.globalTradeLogistics.core.exception.UnknownPrincipalException;
  */
 @Local
 public interface IProfileService {
+
+    /** Lets the profile-completion page pre-fill the form with whatever's already saved. */
+    CustomerProfileSummary getCustomerProfile() throws UnauthorizedAccessException, UnknownPrincipalException;
 
     void updateCustomerProfile(String fullName, String mobile1, String mobile2, String address, String country)
             throws UnauthorizedAccessException, UnknownPrincipalException;
