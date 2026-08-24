@@ -2,6 +2,8 @@ package me.wishva.globalTradeLogistics.core.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.NamedQueries;
 import jakarta.persistence.NamedQuery;
@@ -13,19 +15,20 @@ import lombok.Setter;
 import java.time.Instant;
 
 /**
- * Maps the existing {@code audit_records} table (schema.postgres.sql) —
- * read-only from this side: rows are written by {@code monitoring-svc}'s
- * {@code AuditPersisterMdb} (Phase 6), consuming {@code AuditEvent}s
- * published by {@link me.wishva.globalTradeLogistics.core.messaging.AuditPublisher}.
- * Until Phase 6 exists (and while {@code IS_PROD=false}), no rows ever land
- * here — see {@code VendorPerformanceServiceBean}'s report-listing method,
- * which simply returns whatever is present.
+ * Maps the existing {@code audit_records} table (schema.postgres.sql).
+ * Written by {@code monitoring-svc}'s {@code AuditPersisterMdb} (Phase 6),
+ * consuming {@code AuditEvent}s published by
+ * {@link me.wishva.globalTradeLogistics.core.messaging.AuditPublisher} —
+ * and while {@code IS_PROD=false} (the dev default), {@code AuditPublisher}
+ * only logs instead of publishing, so this table stays empty in local runs;
+ * see {@code VendorPerformanceServiceBean}'s report-listing method, which
+ * simply returns whatever is present.
  * <p>
  * The table's declared PK is the composite {@code (id, reference, type)},
  * but {@code id} is a {@code SERIAL} and therefore globally unique on its
- * own — mapped as the sole {@code @Id} here since this entity is only ever
- * used for read-only listing, never {@code em.find(...)} by the full
- * composite key.
+ * own — mapped as the sole {@code @Id} here (with {@code IDENTITY}
+ * generation, same as every other {@code SERIAL} PK in this codebase);
+ * {@code em.find(...)} by the full composite key is never needed.
  */
 @Entity
 @Table(name = "audit_records")
@@ -40,6 +43,7 @@ import java.time.Instant;
 public class AuditRecord {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Integer id;
 

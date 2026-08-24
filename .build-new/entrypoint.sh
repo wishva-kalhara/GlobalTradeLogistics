@@ -20,6 +20,10 @@ set -euo pipefail
 : "${JWT_SECRET:?JWT_SECRET is required (see .desired-state/app.env)}"
 : "${NOTIFICATION_TOPIC_CF_JNDI:?NOTIFICATION_TOPIC_CF_JNDI is required (see .desired-state/app.env)}"
 : "${NOTIFICATION_TOPIC_JNDI:?NOTIFICATION_TOPIC_JNDI is required (see .desired-state/app.env)}"
+: "${AUDIT_TOPIC_CF_JNDI:?AUDIT_TOPIC_CF_JNDI is required (see .desired-state/app.env)}"
+: "${AUDIT_TOPIC_JNDI:?AUDIT_TOPIC_JNDI is required (see .desired-state/app.env)}"
+: "${IDEMPOTENCY_QUEUE_CF_JNDI:?IDEMPOTENCY_QUEUE_CF_JNDI is required (see .desired-state/app.env)}"
+: "${IDEMPOTENCY_QUEUE_JNDI:?IDEMPOTENCY_QUEUE_JNDI is required (see .desired-state/app.env)}"
 
 ASADMIN="${GLASSFISH_HOME}/bin/asadmin"
 DOMAIN="domain1"
@@ -64,6 +68,25 @@ fi
 
 if ! "${ASADMIN}" list-jms-resources | grep -q "^${NOTIFICATION_TOPIC_JNDI}$"; then
   "${ASADMIN}" create-jms-resource --restype jakarta.jms.Topic --property Name=notification.email.send "${NOTIFICATION_TOPIC_JNDI}"
+fi
+
+# Phase 6 (monitoring-svc): audit trail Topic + idempotency-check Queue,
+# same idempotent asadmin pattern as the notification topic above.
+echo "[entrypoint] configuring JMS monitoring resources (${AUDIT_TOPIC_JNDI}, ${IDEMPOTENCY_QUEUE_JNDI})"
+if ! "${ASADMIN}" list-jms-resources | grep -q "^${AUDIT_TOPIC_CF_JNDI}$"; then
+  "${ASADMIN}" create-jms-resource --restype jakarta.jms.ConnectionFactory "${AUDIT_TOPIC_CF_JNDI}"
+fi
+
+if ! "${ASADMIN}" list-jms-resources | grep -q "^${AUDIT_TOPIC_JNDI}$"; then
+  "${ASADMIN}" create-jms-resource --restype jakarta.jms.Topic --property Name=monitoring.audit.log "${AUDIT_TOPIC_JNDI}"
+fi
+
+if ! "${ASADMIN}" list-jms-resources | grep -q "^${IDEMPOTENCY_QUEUE_CF_JNDI}$"; then
+  "${ASADMIN}" create-jms-resource --restype jakarta.jms.ConnectionFactory "${IDEMPOTENCY_QUEUE_CF_JNDI}"
+fi
+
+if ! "${ASADMIN}" list-jms-resources | grep -q "^${IDEMPOTENCY_QUEUE_JNDI}$"; then
+  "${ASADMIN}" create-jms-resource --restype jakarta.jms.Queue --property Name=monitoring.idempotency.check "${IDEMPOTENCY_QUEUE_JNDI}"
 fi
 
 echo "[entrypoint] deploying ${EAR_FILE}"

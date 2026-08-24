@@ -52,7 +52,9 @@ public class IdempotencyInterceptor {
         }
 
         Object result = context.proceed();
-        IdempotencyPublisher.publish(new IdempotencyEvent(idempotencyKey, method.getDeclaringClass().getName(), method.getName()));
+        // Simple name, not getName()'s fully-qualified form — logs.class_name
+        // is a legacy VARCHAR(45) that a package-qualified name would overflow.
+        IdempotencyPublisher.publish(new IdempotencyEvent(idempotencyKey, method.getDeclaringClass().getSimpleName(), method.getName()));
         return result;
     }
 }
