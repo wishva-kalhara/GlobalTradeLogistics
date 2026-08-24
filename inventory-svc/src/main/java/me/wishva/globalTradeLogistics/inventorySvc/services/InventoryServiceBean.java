@@ -5,6 +5,7 @@ import jakarta.interceptor.Interceptors;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import me.wishva.globalTradeLogistics.core.dto.InventorySummary;
+import me.wishva.globalTradeLogistics.core.dto.WarehouseSummary;
 import me.wishva.globalTradeLogistics.core.enums.Role;
 import me.wishva.globalTradeLogistics.core.exception.InsufficientInventoryException;
 import me.wishva.globalTradeLogistics.core.interceptor.RequiresRole;
@@ -12,6 +13,7 @@ import me.wishva.globalTradeLogistics.core.interceptor.RequiresRoleInterceptor;
 import me.wishva.globalTradeLogistics.core.local.IInventoryService;
 import me.wishva.globalTradeLogistics.core.model.Inventory;
 import me.wishva.globalTradeLogistics.core.model.Product;
+import me.wishva.globalTradeLogistics.core.model.Warehouse;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -81,6 +83,19 @@ public class InventoryServiceBean implements IInventoryService {
                     inventory.getReorderLevel(),
                     inventory.getUnitPrice(),
                     inventory.getLastUpdatedAt()));
+        }
+        return summaries;
+    }
+
+    @Override
+    @RequiresRole({Role.WAREHOUSE_MANAGER, Role.COORDINATOR, Role.ADMIN})
+    public List<WarehouseSummary> listWarehouses() {
+        List<Warehouse> warehouses = em.createQuery("SELECT w FROM Warehouse w ORDER BY w.warehouseId", Warehouse.class)
+                .getResultList();
+
+        List<WarehouseSummary> summaries = new ArrayList<>();
+        for (Warehouse warehouse : warehouses) {
+            summaries.add(new WarehouseSummary(warehouse.getWarehouseId(), warehouse.getCountry()));
         }
         return summaries;
     }

@@ -2,6 +2,7 @@ package me.wishva.globalTradeLogistics.core.local;
 
 import jakarta.ejb.Local;
 import me.wishva.globalTradeLogistics.core.dto.InventorySummary;
+import me.wishva.globalTradeLogistics.core.dto.WarehouseSummary;
 import me.wishva.globalTradeLogistics.core.exception.InsufficientInventoryException;
 import me.wishva.globalTradeLogistics.core.exception.UnauthorizedAccessException;
 
@@ -28,4 +29,7 @@ public interface IInventoryService {
     void incrementStock(Integer productId, Integer qty);
 
     List<InventorySummary> listByWarehouse(Integer warehouseId) throws UnauthorizedAccessException;
+
+    /** Warehouses to populate the inventory console's dropdown (same roles as {@link #listByWarehouse}). */
+    List<WarehouseSummary> listWarehouses() throws UnauthorizedAccessException;
 }

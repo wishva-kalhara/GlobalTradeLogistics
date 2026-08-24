@@ -8,6 +8,7 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import me.wishva.globalTradeLogistics.apiGateway.security.Secured;
 import me.wishva.globalTradeLogistics.core.dto.InventorySummary;
+import me.wishva.globalTradeLogistics.core.dto.WarehouseSummary;
 import me.wishva.globalTradeLogistics.core.exception.UnauthorizedAccessException;
 import me.wishva.globalTradeLogistics.core.local.IInventoryService;
 
@@ -26,6 +27,12 @@ public class InventoryController {
 
     @EJB
     private IInventoryService inventoryService;
+
+    @GET
+    @Path("/warehouses")
+    public List<WarehouseSummary> listWarehouses() throws UnauthorizedAccessException {
+        return inventoryService.listWarehouses();
+    }
 
     @GET
     @Path("/{warehouseId}")

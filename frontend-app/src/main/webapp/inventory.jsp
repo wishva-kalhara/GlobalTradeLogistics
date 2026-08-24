@@ -15,14 +15,11 @@
             <h1 class="text-xl font-semibold text-gray-900">Warehouse Inventory</h1>
             <p class="mt-1 text-sm text-gray-500">Current stock levels — rows below reorder level are highlighted.</p>
         </div>
-        <form id="warehouse-form" class="flex items-end gap-2">
-            <div>
-                <label class="mb-1 block text-xs font-medium text-gray-700">Warehouse ID</label>
-                <input type="number" id="warehouseId" min="1" value="1" required
-                       class="block w-32 rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30"/>
-            </div>
-            <button type="submit" class="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800">Load</button>
-        </form>
+        <div>
+            <label class="mb-1 block text-xs font-medium text-gray-700">Warehouse</label>
+            <select id="warehouseId"
+                    class="block w-56 rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30"></select>
+        </div>
     </div>
 
     <div id="alert-error" class="mt-4 hidden rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"></div>
@@ -100,12 +97,44 @@
         }
     }
 
-    document.getElementById("warehouse-form").addEventListener("submit", function (e) {
-        e.preventDefault();
-        loadInventory(document.getElementById("warehouseId").value);
+    async function loadWarehouses() {
+        const select = document.getElementById("warehouseId");
+        try {
+            const res = await fetch("/api/v1/inventory/warehouses", {
+                headers: { "Authorization": "Bearer " + session.token },
+            });
+            if (res.status === 401) {
+                localStorage.removeItem("gtl.app.session");
+                window.location.href = "/app/login.jsp";
+                return;
+            }
+            if (!res.ok) {
+                const data = await res.json().catch(function () { return {}; });
+                throw new Error(data.error || ("status " + res.status));
+            }
+            const warehouses = await res.json();
+            warehouses.forEach(function (w) {
+                const option = document.createElement("option");
+                option.value = w.warehouseId;
+                option.textContent = "Warehouse " + w.warehouseId + " (" + w.country + ")";
+                select.appendChild(option);
+            });
+            if (warehouses.length > 0) {
+                loadInventory(select.value);
+            } else {
+                emptyEl.classList.remove("hidden");
+            }
+        } catch (err) {
+            errorEl.textContent = "Could not load warehouses: " + err.message;
+            errorEl.classList.remove("hidden");
+        }
+    }
+
+    document.getElementById("warehouseId").addEventListener("change", function () {
+        loadInventory(this.value);
     });
 
-    loadInventory(document.getElementById("warehouseId").value);
+    loadWarehouses();
 </script>
 </body>
 </html>
