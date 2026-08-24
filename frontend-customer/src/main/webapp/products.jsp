@@ -8,7 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="h-full">
-<%@ include file="/WEB-INF/includes/nav.jspf" %>
+<%@ include file="/WEB-INF/includes/nav.jsp" %>
 <main class="mx-auto max-w-6xl px-4 py-10 pb-32 sm:px-6 lg:px-8">
     <div class="flex flex-wrap items-end justify-between gap-4">
         <div>

@@ -15,9 +15,10 @@
                     </svg>
                 </button>
                 <div id="nav-account-menu"
-                     class="absolute right-0 z-10 mt-2 hidden w-48 rounded-md border border-gray-200 bg-white py-1 shadow-lg">
-                    <!-- Seller-specific functions live here. Add new links as they're built (e.g. My Purchase Orders, Add Product Offering). -->
+                     class="absolute right-0 z-10 mt-2 hidden w-56 rounded-md border border-gray-200 bg-white py-1 shadow-lg">
                     <a href="/seller/me/update-profile.jsp" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Update Profile</a>
+                    <a href="/seller/purchase-orders.jsp" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">My Purchase Orders</a>
+                    <a href="/seller/products/add-offering.jsp" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Add Product Offering</a>
                 </div>
             </div>
             <a id="nav-logout-link" href="#" class="hidden rounded-md bg-gray-100 px-3 py-1.5 font-medium text-gray-700 hover:bg-gray-200">Log out</a>

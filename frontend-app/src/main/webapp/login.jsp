@@ -8,7 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="h-full">
-<%@ include file="/WEB-INF/includes/nav.jspf" %>
+<%@ include file="/WEB-INF/includes/nav.jsp" %>
 <main class="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
     <div class="mx-auto max-w-md">
         <div class="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
@@ -92,7 +92,9 @@
                 throw new Error(data.error || ("status " + res.status));
             }
             localStorage.setItem("gtl.app.session", JSON.stringify(data));
-            window.location.href = "/app/app-user-management.jsp";
+            // Role-appropriate landing page differs (ADMIN vs COORDINATOR vs...),
+            // so land on the dashboard, which routes by session.role.
+            window.location.href = "/app/index.jsp";
         } catch (err) {
             showAlert("error", "Could not verify code: " + err.message);
         }
