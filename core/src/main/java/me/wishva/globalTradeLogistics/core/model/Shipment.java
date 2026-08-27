@@ -39,7 +39,15 @@ import me.wishva.globalTradeLogistics.core.enums.ShipmentStatus;
                 name = "Shipment.findDeliveredAwaitingGrn",
                 query = "SELECT s FROM Shipment s WHERE s.status = :status "
                         + "AND s.purchaseOrdersPoId IS NOT NULL "
-                        + "AND s.purchaseOrdersPoId NOT IN (SELECT po.poId FROM PurchaseOrder po WHERE po.isCompleted = 1)")
+                        + "AND s.purchaseOrdersPoId NOT IN (SELECT po.poId FROM PurchaseOrder po WHERE po.isCompleted = 1)"),
+        @NamedQuery(
+                name = "Shipment.findAllOrderedByIdDesc",
+                query = "SELECT s FROM Shipment s ORDER BY s.shipmentId DESC"),
+        @NamedQuery(
+                name = "Shipment.findBySupplier",
+                query = "SELECT s FROM Shipment s WHERE s.purchaseOrdersPoId IN "
+                        + "(SELECT po.poId FROM PurchaseOrder po WHERE po.suppliersSupplierId = :supplierId) "
+                        + "ORDER BY s.shipmentId DESC")
 })
 @Getter
 @Setter

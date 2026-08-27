@@ -63,7 +63,12 @@ public class ShipmentServiceBean implements IShipmentService {
     @IdempotencyChecked
     @Audited(resource = "LOGISTICS")
     public ShipmentSummary updateStatus(Integer shipmentId, ShipmentStatus newStatus, String idempotencyKey)
-            throws ShipmentNotFoundException {
+            throws ShipmentNotFoundException, InvalidShipmentStateException {
+        if (newStatus == ShipmentStatus.COMPLETED) {
+            throw new InvalidShipmentStateException(
+                    "Shipment status COMPLETED is set automatically when a GRN is recorded — it can't be set directly");
+        }
+
         Shipment shipment = em.find(Shipment.class, shipmentId);
         if (shipment == null) {
             throw new ShipmentNotFoundException("No shipment found with id " + shipmentId);
@@ -89,10 +94,58 @@ public class ShipmentServiceBean implements IShipmentService {
     }
 
     @Override
+    @RequiresRole(Role.CUSTOMS_AGENT)
+    @Audited(resource = "LOGISTICS")
+    public ShipmentSummary updateCustomsStatus(Integer shipmentId, CustomsClearanceStatus status)
+            throws ShipmentNotFoundException, InvalidShipmentStateException {
+        Shipment shipment = em.find(Shipment.class, shipmentId);
+        if (shipment == null) {
+            throw new ShipmentNotFoundException("No shipment found with id " + shipmentId);
+        }
+
+        CustomClearanceRecord record = resolveLatestCustomsRecord(shipmentId);
+        if (record == null) {
+            throw new InvalidShipmentStateException(
+                    "No customs record exists yet for shipment " + shipmentId + " — create one first");
+        }
+        record.setStatus(status);
+
+        return toSummary(shipment);
+    }
+
+    @Override
     public ShipmentSummary notifyCarrierSystem(Integer shipmentId) throws ShipmentNotFoundException {
         carrierGatewayBean.notifyCarrierSystem(shipmentId);
         Shipment shipment = em.find(Shipment.class, shipmentId);
         return toSummary(shipment);
+    }
+
+    @Override
+    @RequiresRole({Role.ADMIN, Role.COORDINATOR, Role.WAREHOUSE_MANAGER, Role.CUSTOMS_AGENT})
+    public List<ShipmentSummary> listAll() {
+        List<Shipment> shipments = em.createNamedQuery("Shipment.findAllOrderedByIdDesc", Shipment.class)
+                .getResultList();
+
+        List<ShipmentSummary> summaries = new ArrayList<>();
+        for (Shipment shipment : shipments) {
+            summaries.add(toSummary(shipment));
+        }
+        return summaries;
+    }
+
+    @Override
+    @RequiresRole(Role.VENDOR_REP)
+    public List<ShipmentSummary> listForSupplier() throws UnknownPrincipalException {
+        Supplier supplier = resolveSupplier();
+        List<Shipment> shipments = em.createNamedQuery("Shipment.findBySupplier", Shipment.class)
+                .setParameter("supplierId", supplier.getSupplierId())
+                .getResultList();
+
+        List<ShipmentSummary> summaries = new ArrayList<>();
+        for (Shipment shipment : shipments) {
+            summaries.add(toSummary(shipment));
+        }
+        return summaries;
     }
 
     @Override
@@ -159,7 +212,16 @@ public class ShipmentServiceBean implements IShipmentService {
         return matches.get(0);
     }
 
+    private CustomClearanceRecord resolveLatestCustomsRecord(Integer shipmentId) {
+        List<CustomClearanceRecord> records = em.createNamedQuery("CustomClearanceRecord.findLatestByShipment", CustomClearanceRecord.class)
+                .setParameter("shipmentId", shipmentId)
+                .setMaxResults(1)
+                .getResultList();
+        return records.isEmpty() ? null : records.get(0);
+    }
+
     private ShipmentSummary toSummary(Shipment shipment) {
+        CustomClearanceRecord latestCustomsRecord = resolveLatestCustomsRecord(shipment.getShipmentId());
         return new ShipmentSummary(
                 shipment.getShipmentId(),
                 shipment.getTrackingNumber(),
@@ -169,6 +231,7 @@ public class ShipmentServiceBean implements IShipmentService {
                 shipment.getStatus(),
                 shipment.getShipmentType(),
                 shipment.getRef(),
-                shipment.getPurchaseOrdersPoId());
+                shipment.getPurchaseOrdersPoId(),
+                latestCustomsRecord != null ? latestCustomsRecord.getStatus() : null);
     }
 }

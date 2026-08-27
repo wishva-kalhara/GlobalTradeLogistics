@@ -32,18 +32,22 @@
                 { href: "/app/app-user-management.jsp", label: "Application User Management" },
                 { href: "/app/vendor-performance.jsp", label: "Vendor Performance Report" },
                 { href: "/app/inventory.jsp", label: "Warehouse Inventory" },
+                { href: "/app/shipments/list.jsp", label: "Shipments" },
             ],
             COORDINATOR: [
                 { href: "/app/purchase-orders/create.jsp", label: "Create Purchase Order" },
                 { href: "/app/vendor-performance.jsp", label: "Vendor Performance Report" },
                 { href: "/app/inventory.jsp", label: "Warehouse Inventory" },
+                { href: "/app/shipments/list.jsp", label: "Shipments" },
             ],
             WAREHOUSE_MANAGER: [
                 { href: "/app/purchase-orders/record-grn.jsp", label: "Record GRN" },
                 { href: "/app/inventory.jsp", label: "Warehouse Inventory" },
+                { href: "/app/shipments/list.jsp", label: "Shipments" },
             ],
             CUSTOMS_AGENT: [
                 { href: "/app/shipments/manage.jsp", label: "Manage Shipments" },
+                { href: "/app/shipments/list.jsp", label: "All Shipments" },
             ],
         };
 

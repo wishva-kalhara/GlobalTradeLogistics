@@ -26,6 +26,9 @@ import me.wishva.globalTradeLogistics.core.enums.CustomsClearanceStatus;
                 name = "CustomClearanceRecord.findByShipment",
                 query = "SELECT c FROM CustomClearanceRecord c WHERE c.supplierShipmentsShipmentId = :shipmentId"),
         @NamedQuery(
+                name = "CustomClearanceRecord.findLatestByShipment",
+                query = "SELECT c FROM CustomClearanceRecord c WHERE c.supplierShipmentsShipmentId = :shipmentId ORDER BY c.recordId DESC"),
+        @NamedQuery(
                 name = "CustomClearanceRecord.findPending",
                 query = "SELECT c FROM CustomClearanceRecord c WHERE c.status = me.wishva.globalTradeLogistics.core.enums.CustomsClearanceStatus.PENDING")
 })

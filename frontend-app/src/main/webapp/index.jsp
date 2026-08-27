@@ -66,17 +66,21 @@
         ADMIN: [
             { href: "/app/app-user-management.jsp", label: "Application User Management", description: "Onboard staff accounts, or register a customer/supplier directly." },
             { href: "/app/inventory.jsp", label: "Warehouse Inventory", description: "Check current stock levels by warehouse." },
+            { href: "/app/shipments/list.jsp", label: "Shipments", description: "See every shipment currently in progress." },
         ],
         COORDINATOR: [
             { href: "/app/purchase-orders/create.jsp", label: "Create Purchase Order", description: "Order more stock from a supplier." },
             { href: "/app/inventory.jsp", label: "Warehouse Inventory", description: "Check current stock levels by warehouse." },
+            { href: "/app/shipments/list.jsp", label: "Shipments", description: "See every shipment currently in progress." },
         ],
         WAREHOUSE_MANAGER: [
-            { href: "/app/purchase-orders/record-grn.jsp", label: "Record GRN", description: "Confirm goods received against an open purchase order." },
+            { href: "/app/purchase-orders/record-grn.jsp", label: "Record GRN", description: "Confirm goods received for a delivered shipment." },
             { href: "/app/inventory.jsp", label: "Warehouse Inventory", description: "Check current stock levels by warehouse." },
+            { href: "/app/shipments/list.jsp", label: "Shipments", description: "See every shipment currently in progress." },
         ],
         CUSTOMS_AGENT: [
             { href: "/app/shipments/manage.jsp", label: "Manage Shipments", description: "Update shipment status and record customs clearance." },
+            { href: "/app/shipments/list.jsp", label: "All Shipments", description: "See every shipment currently in progress." },
         ],
     };
 

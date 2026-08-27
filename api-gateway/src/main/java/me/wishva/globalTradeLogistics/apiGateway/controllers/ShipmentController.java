@@ -13,15 +13,18 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import me.wishva.globalTradeLogistics.apiGateway.dto.CreateCustomsRecordBody;
 import me.wishva.globalTradeLogistics.apiGateway.dto.RecordGrnBody;
+import me.wishva.globalTradeLogistics.apiGateway.dto.UpdateCustomsStatusBody;
 import me.wishva.globalTradeLogistics.apiGateway.dto.UpdateShipmentStatusBody;
 import me.wishva.globalTradeLogistics.apiGateway.security.Secured;
 import me.wishva.globalTradeLogistics.core.dto.PurchaseOrderSummary;
 import me.wishva.globalTradeLogistics.core.dto.ShipmentSummary;
+import me.wishva.globalTradeLogistics.core.enums.CustomsClearanceStatus;
 import me.wishva.globalTradeLogistics.core.enums.ShipmentStatus;
 import me.wishva.globalTradeLogistics.core.exception.InvalidShipmentStateException;
 import me.wishva.globalTradeLogistics.core.exception.PurchaseOrderNotFoundException;
 import me.wishva.globalTradeLogistics.core.exception.ShipmentNotFoundException;
 import me.wishva.globalTradeLogistics.core.exception.UnauthorizedAccessException;
+import me.wishva.globalTradeLogistics.core.exception.UnknownPrincipalException;
 import me.wishva.globalTradeLogistics.core.local.IPurchaseOrderService;
 import me.wishva.globalTradeLogistics.core.local.IShipmentService;
 
@@ -51,6 +54,17 @@ public class ShipmentController {
     private IPurchaseOrderService purchaseOrderService;
 
     @GET
+    public List<ShipmentSummary> listAll() throws UnauthorizedAccessException {
+        return shipmentService.listAll();
+    }
+
+    @GET
+    @Path("/mine")
+    public List<ShipmentSummary> listForSupplier() throws UnauthorizedAccessException, UnknownPrincipalException {
+        return shipmentService.listForSupplier();
+    }
+
+    @GET
     @Path("/awaiting-grn")
     public List<ShipmentSummary> listDeliveredAwaitingGrn() throws UnauthorizedAccessException {
         return shipmentService.listDeliveredAwaitingGrn();
@@ -75,7 +89,7 @@ public class ShipmentController {
     @PUT
     @Path("/{shipmentId}/status")
     public ShipmentSummary updateStatus(@PathParam("shipmentId") Integer shipmentId, UpdateShipmentStatusBody body)
-            throws ShipmentNotFoundException, UnauthorizedAccessException {
+            throws ShipmentNotFoundException, InvalidShipmentStateException, UnauthorizedAccessException {
         if (body == null || body.getStatus() == null || body.getIdempotencyKey() == null || body.getIdempotencyKey().isBlank()) {
             throw new BadRequestException("status and idempotencyKey are required");
         }
@@ -100,6 +114,24 @@ public class ShipmentController {
         String declarationNumber = body != null ? body.getDeclarationNumber() : null;
         shipmentService.createCustomsRecord(shipmentId, declarationNumber);
         return Response.status(Response.Status.CREATED).build();
+    }
+
+    @PUT
+    @Path("/{shipmentId}/customs/status")
+    public ShipmentSummary updateCustomsStatus(@PathParam("shipmentId") Integer shipmentId, UpdateCustomsStatusBody body)
+            throws ShipmentNotFoundException, InvalidShipmentStateException, UnauthorizedAccessException {
+        if (body == null || body.getStatus() == null) {
+            throw new BadRequestException("status is required");
+        }
+
+        CustomsClearanceStatus status;
+        try {
+            status = CustomsClearanceStatus.valueOf(body.getStatus());
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("Unknown status: " + body.getStatus());
+        }
+
+        return shipmentService.updateCustomsStatus(shipmentId, status);
     }
 
     @POST

@@ -4,5 +4,7 @@ public enum ShipmentStatus {
     CREATED,
     IN_TRANSIT,
     DELIVERED,
-    DELAYED
+    DELAYED,
+    /** Set only by {@code recordGrnForShipment} when its GRN is recorded — never settable directly via {@code PUT /shipments/{id}/status}. */
+    COMPLETED
 }

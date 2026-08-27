@@ -19,18 +19,19 @@
 
         <form id="po-form" class="mt-6 space-y-4">
             <div>
-                <label class="mb-1 block text-sm font-medium text-gray-700">Supplier</label>
-                <select id="supplierId" required
-                        class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30">
-                    <option value="">Select a supplier&hellip;</option>
-                </select>
-            </div>
-            <div>
                 <label class="mb-1 block text-sm font-medium text-gray-700">Product</label>
                 <select id="productId" required
                         class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30">
                     <option value="">Select a product&hellip;</option>
                 </select>
+            </div>
+            <div>
+                <label class="mb-1 block text-sm font-medium text-gray-700">Supplier</label>
+                <select id="supplierId" required disabled
+                        class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30 disabled:bg-gray-50 disabled:text-gray-400">
+                    <option value="">Select a product first&hellip;</option>
+                </select>
+                <p id="supplier-empty-hint" class="mt-1 hidden text-xs text-amber-600">No supplier has registered an offering for this product yet.</p>
             </div>
             <div>
                 <label class="mb-1 block text-sm font-medium text-gray-700">Quantity</label>
@@ -86,9 +87,23 @@
         }
     })();
 
-    (async function loadSuppliers() {
+    async function loadSuppliersForProduct(productId) {
+        const select = document.getElementById("supplierId");
+        const emptyHint = document.getElementById("supplier-empty-hint");
+        select.innerHTML = "";
+        emptyHint.classList.add("hidden");
+
+        if (!productId) {
+            select.disabled = true;
+            select.appendChild(new Option("Select a product first…", ""));
+            return;
+        }
+
+        select.disabled = true;
+        select.appendChild(new Option("Loading suppliers…", ""));
+
         try {
-            const res = await fetch("/api/v1/admin/suppliers", {
+            const res = await fetch("/api/v1/admin/suppliers?productId=" + productId, {
                 headers: { "Authorization": "Bearer " + session.token },
             });
             if (res.status === 401) {
@@ -101,17 +116,29 @@
                 throw new Error(data.error || ("status " + res.status));
             }
             const suppliers = await res.json();
-            const select = document.getElementById("supplierId");
+
+            select.innerHTML = "";
+            if (suppliers.length === 0) {
+                select.appendChild(new Option("No suppliers for this product", ""));
+                emptyHint.classList.remove("hidden");
+                return;
+            }
+
+            select.appendChild(new Option("Select a supplier…", ""));
             suppliers.forEach(function (s) {
-                const option = document.createElement("option");
-                option.value = s.supplierId;
-                option.textContent = s.fullName;
-                select.appendChild(option);
+                select.appendChild(new Option(s.fullName, s.supplierId));
             });
+            select.disabled = false;
         } catch (err) {
+            select.innerHTML = "";
+            select.appendChild(new Option("Select a product first…", ""));
             showError("Could not load suppliers: " + err.message);
         }
-    })();
+    }
+
+    document.getElementById("productId").addEventListener("change", function () {
+        loadSuppliersForProduct(this.value);
+    });
 
     document.getElementById("po-form").addEventListener("submit", async function (e) {
         e.preventDefault();
@@ -154,6 +181,7 @@
             document.getElementById("result-card").classList.remove("hidden");
 
             document.getElementById("po-form").reset();
+            loadSuppliersForProduct("");
         } catch (err) {
             showError("Could not create purchase order: " + err.message);
         }

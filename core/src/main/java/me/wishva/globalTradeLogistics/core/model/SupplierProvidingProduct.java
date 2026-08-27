@@ -25,7 +25,10 @@ import lombok.Setter;
         @NamedQuery(
                 name = "SupplierProvidingProduct.findLeadTime",
                 query = "SELECT s FROM SupplierProvidingProduct s "
-                        + "WHERE s.productsProductId = :productId AND s.suppliersSupplierId = :supplierId")
+                        + "WHERE s.productsProductId = :productId AND s.suppliersSupplierId = :supplierId"),
+        @NamedQuery(
+                name = "SupplierProvidingProduct.findSupplierIdsByProduct",
+                query = "SELECT DISTINCT s.suppliersSupplierId FROM SupplierProvidingProduct s WHERE s.productsProductId = :productId")
 })
 @Getter
 @Setter

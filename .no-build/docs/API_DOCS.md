@@ -191,39 +191,63 @@ Register which products a supplier can provide, from which warehouse, and their 
 
 ## 9. Shipments & Customs 🔒 *(role: `CUSTOMS_AGENT`, except where noted)*
 
+The full lifecycle is now **ship → customs → GRN**: a supplier creates the shipment (§7), a customs agent clears it, and only once cleared *and* `DELIVERED` can a warehouse manager record its GRN — which is the only thing that ever sets a shipment to `COMPLETED`.
+
+### `GET /shipments` 🔒 *(roles: `ADMIN`, `COORDINATOR`, `WAREHOUSE_MANAGER`, `CUSTOMS_AGENT`)*
+- **200**: `[ShipmentSummary, ...]` — every shipment, most recent first. Staff-wide visibility into shipments in progress.
+- **403**: caller's role isn't one of the four above.
+
+### `GET /shipments/mine` 🔒 *(role: `VENDOR_REP`)*
+- **200**: `[ShipmentSummary, ...]` — shipments created for any of the calling supplier's purchase orders, most recent first.
+- **403**: caller isn't `VENDOR_REP`.
+
 ### `GET /shipments/{shipmentId}` 🔒
-- **200**: `ShipmentSummary` — `{ "shipmentId": 1, "trackingNumber": "string", "vesselId": "string", "type": "string", "warehouseId": 1, "status": "CREATED|IN_TRANSIT|DELIVERED|DELAYED", "shipmentType": "string|null", "ref": "string|null", "poId": 1 }`
+- **200**: `ShipmentSummary` — `{ "shipmentId": 1, "trackingNumber": "string", "vesselId": "string", "type": "string", "warehouseId": 1, "status": "CREATED|IN_TRANSIT|DELIVERED|DELAYED|COMPLETED", "shipmentType": "string|null", "ref": "string|null", "poId": 1, "customsStatus": "PENDING|CLEARED|HELD|null" }`
 - **404**: no shipment with that id (`ShipmentNotFoundException`).
 - `poId` is the purchase order this shipment was created for (§7's `POST /purchase-orders/{poId}/shipment`) — `null` for the one legacy seeded shipment that predates the ship → customs → GRN flow.
+- `customsStatus` reflects the shipment's most recent customs clearance record (see below) — `null` if none has been created yet.
 
 ### `GET /shipments/awaiting-grn` 🔒 *(role: `WAREHOUSE_MANAGER`)*
-- **200**: `[ShipmentSummary, ...]` — shipments that are `DELIVERED`, linked to a PO, and whose PO isn't completed yet. Feeds the record-GRN dropdown.
+- **200**: `[ShipmentSummary, ...]` — shipments that are `DELIVERED`, linked to a PO, and whose PO isn't completed yet. Feeds the record-GRN dropdown. (Does **not** additionally filter on customs status — a shipment can appear here and still get rejected at GRN time if customs isn't `CLEARED` yet; the customs check happens at `POST /shipments/{shipmentId}/grn`.)
 - **403**: caller isn't `WAREHOUSE_MANAGER`.
 
 ### `POST /shipments/{shipmentId}/grn` 🔒 *(role: `WAREHOUSE_MANAGER`)*
-Record goods received for a delivered shipment — the last step of the ship → customs → GRN flow. Replaces the old PO-id-based GRN endpoint now that GRN is gated on shipment state.
+Record goods received for a delivered, customs-cleared shipment — the last step of the ship → customs → GRN flow. Replaces the old PO-id-based GRN endpoint now that GRN is gated on shipment state.
 
 - **Body**: `{ "qty": 30 }` — positive.
 - **200**: `PurchaseOrderSummary` (the shipment's linked PO) with `"completed": true`.
 - **400**: missing/non-positive `qty`.
 - **403**: caller isn't `WAREHOUSE_MANAGER`.
 - **404**: no shipment with that id (`ShipmentNotFoundException`), or its linked PO vanished (`PurchaseOrderNotFoundException`).
-- **409**: the shipment isn't linked to a PO, isn't yet `DELIVERED`, or its PO was already completed (`InvalidShipmentStateException`).
-- **Side effects**: same as the old endpoint — inserts a `grns` row; increments `inventory.qty`; sets `purchase_orders.is_completed = 1`; publishes a `PROCUREMENT` audit event.
+- **409**: the shipment isn't linked to a PO, isn't yet `DELIVERED`, its latest customs record isn't `CLEARED`, or its PO was already completed (`InvalidShipmentStateException`).
+- **Side effects**: inserts a `grns` row; increments `inventory.qty`; sets `purchase_orders.is_completed = 1`; sets the shipment's `status = COMPLETED`; publishes a `PROCUREMENT` audit event.
 
 ### `PUT /shipments/{shipmentId}/status` 🔒
-- **Body**: `{ "status": "CREATED|IN_TRANSIT|DELIVERED|DELAYED", "idempotencyKey": "string" }` — both required, `idempotencyKey` non-blank.
+- **Body**: `{ "status": "CREATED|IN_TRANSIT|DELIVERED|DELAYED", "idempotencyKey": "string" }` — both required, `idempotencyKey` non-blank. `COMPLETED` is **not** a settable value here — see 409 below.
 - **200**: `ShipmentSummary` reflecting the new status. If the exact same `idempotencyKey` had already been processed, the interceptor short-circuits the write and the endpoint transparently re-fetches and returns the shipment's current state instead (see caveat below).
 - **400**: missing field, or `status` isn't a valid `ShipmentStatus` value.
 - **403**: caller isn't `CUSTOMS_AGENT`.
 - **404**: shipment not found.
+- **409**: `status` was `COMPLETED` (`InvalidShipmentStateException`) — that status is set automatically by `POST /shipments/{shipmentId}/grn`, never directly.
 - **Idempotency caveat**: the durable "have I seen this key" store (`logs` table) is only populated once `monitoring-svc`'s consumer is active under `IS_PROD=true`. Under the default dev config (`IS_PROD=false`), reusing a key does **not** actually prevent a second write — this is a known, documented gap, not a defect in this endpoint.
 
 ### `POST /shipments/{shipmentId}/customs` 🔒
+Creates a new customs clearance record, starting at `PENDING`.
+
 - **Body**: `{ "declarationNumber": "string" }` (declaration number may be omitted).
 - **201**: created, no body.
 - **403** / **404**: same as above.
 - **Side effect**: inserts a `custom_clearence_records` row with `status = PENDING`.
+
+### `PUT /shipments/{shipmentId}/customs/status` 🔒
+"Handles customs" for the shipment — advances its most recent customs record to `CLEARED` (or `HELD`/back to `PENDING`). A GRN can't be recorded until this reaches `CLEARED`.
+
+- **Body**: `{ "status": "PENDING|CLEARED|HELD" }`.
+- **200**: `ShipmentSummary` with `customsStatus` reflecting the update.
+- **400**: missing `status`, or not a valid `CustomsClearanceStatus` value.
+- **403**: caller isn't `CUSTOMS_AGENT`.
+- **404**: no shipment with that id.
+- **409**: no customs record exists yet for this shipment — create one first via `POST /shipments/{shipmentId}/customs` (`InvalidShipmentStateException`).
 
 ### `POST /shipments/{shipmentId}/notify-carrier`
 Simulates notifying an external carrier system. **Not role-gated** beyond requiring a valid JWT (any authenticated staff role can call it) — it's the project's bean-managed-transaction (BMT) example: the simulated external call runs with no database transaction open, sandwiched between two short read/write transactions.
@@ -303,11 +327,14 @@ Every error response is `{"error": "<message>"}`. Status code is determined by w
 | POST | `/suppliers/me/products` | 🔒 | VENDOR_REP | `AddProductOfferingBody` | 201 |
 | GET | `/inventory/{warehouseId}` | 🔒 | ADMIN, COORDINATOR, WAREHOUSE_MANAGER | — | `[InventorySummary]` |
 | GET | `/inventory/warehouses` | 🔒 | ADMIN, COORDINATOR, WAREHOUSE_MANAGER, VENDOR_REP | — | `[WarehouseSummary]` |
+| GET | `/shipments` | 🔒 | ADMIN, COORDINATOR, WAREHOUSE_MANAGER, CUSTOMS_AGENT | — | `[ShipmentSummary]` |
+| GET | `/shipments/mine` | 🔒 | VENDOR_REP | — | `[ShipmentSummary]` |
 | GET | `/shipments/{shipmentId}` | 🔒 | CUSTOMS_AGENT | — | `ShipmentSummary` |
 | GET | `/shipments/awaiting-grn` | 🔒 | WAREHOUSE_MANAGER | — | `[ShipmentSummary]` |
 | POST | `/shipments/{shipmentId}/grn` | 🔒 | WAREHOUSE_MANAGER | `RecordGrnBody` | `PurchaseOrderSummary` |
 | PUT | `/shipments/{shipmentId}/status` | 🔒 | CUSTOMS_AGENT | `UpdateShipmentStatusBody` | `ShipmentSummary` |
 | POST | `/shipments/{shipmentId}/customs` | 🔒 | CUSTOMS_AGENT | `CreateCustomsRecordBody` | 201 |
+| PUT | `/shipments/{shipmentId}/customs/status` | 🔒 | CUSTOMS_AGENT | `UpdateCustomsStatusBody` | `ShipmentSummary` |
 | POST | `/shipments/{shipmentId}/notify-carrier` | 🔒 | any authenticated | — | `ShipmentSummary` |
 | GET | `/admin/sales-summary` | 🔒 | ADMIN, COORDINATOR | — | `SalesSummary` |
 | GET | `/admin/suppliers` | 🔒 | ADMIN, COORDINATOR | — | `[SupplierSummary]` |

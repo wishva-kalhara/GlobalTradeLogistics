@@ -103,4 +103,23 @@ public class UserAdminServiceBean implements IUserAdminService {
                 .map(s -> new SupplierSummary(s.getSupplierId(), s.getFullName(), s.getEmail()))
                 .collect(Collectors.toList());
     }
+
+    @Override
+    @RequiresRole({Role.ADMIN, Role.COORDINATOR})
+    public List<SupplierSummary> listSuppliersForProduct(Integer productId) {
+        List<Integer> supplierIds = em.createNamedQuery("SupplierProvidingProduct.findSupplierIdsByProduct", Integer.class)
+                .setParameter("productId", productId)
+                .getResultList();
+        if (supplierIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return em.createNamedQuery("Supplier.findAllActive", Supplier.class)
+                .getResultList()
+                .stream()
+                .filter(s -> supplierIds.contains(s.getSupplierId()))
+                .filter(s -> s.getFullName() != null && !s.getFullName().isBlank())
+                .map(s -> new SupplierSummary(s.getSupplierId(), s.getFullName(), s.getEmail()))
+                .collect(Collectors.toList());
+    }
 }

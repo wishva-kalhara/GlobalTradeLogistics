@@ -19,6 +19,7 @@
                     <a href="/seller/me/update-profile.jsp" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Update Profile</a>
                     <a href="/seller/purchase-orders.jsp" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">My Purchase Orders</a>
                     <a href="/seller/shipments/create.jsp" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Create Shipment</a>
+                    <a href="/seller/shipments/list.jsp" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">My Shipments</a>
                     <a href="/seller/products/add-offering.jsp" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Add Product Offering</a>
                 </div>
             </div>

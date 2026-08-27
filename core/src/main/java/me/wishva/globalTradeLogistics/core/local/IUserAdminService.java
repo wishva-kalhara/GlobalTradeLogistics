@@ -34,4 +34,12 @@ public interface IUserAdminService {
      * bare, user-like email address rather than a real seller.
      */
     List<SupplierSummary> listSuppliers() throws UnauthorizedAccessException;
+
+    /**
+     * Suppliers who've registered a product offering for the given product
+     * (roles: ADMIN, COORDINATOR) — narrows the create-purchase-order page's
+     * supplier dropdown to only those who can actually fulfill the selected
+     * product. Same completed-profile filter as {@link #listSuppliers()}.
+     */
+    List<SupplierSummary> listSuppliersForProduct(Integer productId) throws UnauthorizedAccessException;
 }

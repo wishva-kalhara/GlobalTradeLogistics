@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import me.wishva.globalTradeLogistics.core.enums.CustomsClearanceStatus;
 import me.wishva.globalTradeLogistics.core.enums.ShipmentStatus;
 
 import java.io.Serializable;
@@ -24,6 +25,8 @@ public class ShipmentSummary implements Serializable, Auditable {
     private String shipmentType;
     private String ref;
     private Integer poId;
+    /** Status of the most recent customs clearance record for this shipment, or {@code null} if none exists yet. */
+    private CustomsClearanceStatus customsStatus;
 
     @Override
     @JsonbTransient

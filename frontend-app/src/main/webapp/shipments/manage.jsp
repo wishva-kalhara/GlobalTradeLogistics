@@ -39,6 +39,7 @@
                 <div><dt class="text-gray-500">Type</dt><dd id="sh-type" class="font-medium text-gray-900"></dd></div>
                 <div><dt class="text-gray-500">Warehouse</dt><dd id="sh-warehouse" class="font-medium text-gray-900"></dd></div>
                 <div><dt class="text-gray-500">Purchase order</dt><dd id="sh-poId" class="font-medium text-gray-900"></dd></div>
+                <div><dt class="text-gray-500">Customs status</dt><dd id="sh-customs-status" class="font-medium text-gray-900"></dd></div>
                 <div><dt class="text-gray-500">Carrier ref</dt><dd id="sh-ref" class="font-medium text-gray-900">&mdash;</dd></div>
             </dl>
         </div>
@@ -62,6 +63,7 @@
 
         <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
             <h3 class="font-medium text-gray-900">Record customs clearance</h3>
+            <p class="mt-1 text-xs text-gray-400">A GRN can't be recorded for this shipment until its customs status reaches CLEARED.</p>
             <form id="customs-form" class="mt-3 flex items-end gap-3">
                 <div class="flex-1">
                     <label class="mb-1 block text-sm font-medium text-gray-700">Declaration number</label>
@@ -69,6 +71,19 @@
                            class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30"/>
                 </div>
                 <button type="submit" class="rounded-md bg-green-600 px-4 py-2 font-medium text-white hover:bg-green-700">Create Record</button>
+            </form>
+
+            <form id="customs-status-form" class="mt-4 flex items-end gap-3 border-t border-gray-100 pt-4">
+                <div class="flex-1">
+                    <label class="mb-1 block text-sm font-medium text-gray-700">Update customs status</label>
+                    <select id="new-customs-status"
+                            class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30">
+                        <option value="PENDING">PENDING</option>
+                        <option value="CLEARED">CLEARED</option>
+                        <option value="HELD">HELD</option>
+                    </select>
+                </div>
+                <button type="submit" class="rounded-md bg-gray-900 px-4 py-2 font-medium text-white hover:bg-gray-800">Update</button>
             </form>
         </div>
 
@@ -114,8 +129,10 @@
         document.getElementById("sh-type").textContent = sh.type;
         document.getElementById("sh-warehouse").textContent = sh.warehouseId;
         document.getElementById("sh-poId").textContent = sh.poId ? ("#" + sh.poId) : "-";
+        document.getElementById("sh-customs-status").textContent = sh.customsStatus || "-";
         document.getElementById("sh-ref").textContent = sh.ref || "-";
         document.getElementById("new-status").value = sh.status;
+        document.getElementById("new-customs-status").value = sh.customsStatus || "PENDING";
         shipmentCard.classList.remove("hidden");
     }
 
@@ -193,8 +210,31 @@
             }
             showInfo("Customs clearance record created for shipment #" + currentShipmentId + ".");
             document.getElementById("customs-form").reset();
+            renderShipment(await loadShipment(currentShipmentId));
         } catch (err) {
             showError("Could not create customs record: " + err.message);
+        }
+    });
+
+    document.getElementById("customs-status-form").addEventListener("submit", async function (e) {
+        e.preventDefault();
+        try {
+            const res = await fetch("/api/v1/shipments/" + currentShipmentId + "/customs/status", {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + session.token,
+                },
+                body: JSON.stringify({ status: document.getElementById("new-customs-status").value }),
+            });
+            const data = await res.json().catch(function () { return {}; });
+            if (!res.ok) {
+                throw new Error(data.error || ("status " + res.status));
+            }
+            renderShipment(data);
+            showInfo("Shipment #" + data.shipmentId + " customs status updated to " + data.customsStatus + ".");
+        } catch (err) {
+            showError("Could not update customs status: " + err.message);
         }
     });
 

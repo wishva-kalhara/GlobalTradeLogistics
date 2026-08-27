@@ -18,6 +18,8 @@ import me.wishva.globalTradeLogistics.core.interceptor.RequiresRole;
 import me.wishva.globalTradeLogistics.core.interceptor.RequiresRoleInterceptor;
 import me.wishva.globalTradeLogistics.core.local.IInventoryService;
 import me.wishva.globalTradeLogistics.core.local.IPurchaseOrderService;
+import me.wishva.globalTradeLogistics.core.enums.CustomsClearanceStatus;
+import me.wishva.globalTradeLogistics.core.model.CustomClearanceRecord;
 import me.wishva.globalTradeLogistics.core.model.Inventory;
 import me.wishva.globalTradeLogistics.core.model.Grn;
 import me.wishva.globalTradeLogistics.core.model.Product;
@@ -85,6 +87,16 @@ public class PurchaseOrderServiceBean implements IPurchaseOrderService {
             throw new InvalidShipmentStateException("GRN can only be recorded once shipment " + shipmentId + " has been delivered");
         }
 
+        List<CustomClearanceRecord> customsRecords = em.createNamedQuery(
+                        "CustomClearanceRecord.findLatestByShipment", CustomClearanceRecord.class)
+                .setParameter("shipmentId", shipmentId)
+                .setMaxResults(1)
+                .getResultList();
+        if (customsRecords.isEmpty() || customsRecords.get(0).getStatus() != CustomsClearanceStatus.CLEARED) {
+            throw new InvalidShipmentStateException(
+                    "Customs clearance must be completed (CLEARED) before a GRN can be recorded for shipment " + shipmentId);
+        }
+
         PurchaseOrder po = em.find(PurchaseOrder.class, shipment.getPurchaseOrdersPoId());
         if (po == null) {
             throw new PurchaseOrderNotFoundException("No purchase order found with id " + shipment.getPurchaseOrdersPoId());
@@ -104,6 +116,7 @@ public class PurchaseOrderServiceBean implements IPurchaseOrderService {
         inventoryService.incrementStock(po.getProductsProductId(), qty);
 
         po.setIsCompleted(1);
+        shipment.setStatus(ShipmentStatus.COMPLETED);
 
         return toSummary(po);
     }

@@ -7,6 +7,7 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import me.wishva.globalTradeLogistics.apiGateway.dto.CreateUserBody;
@@ -88,8 +89,8 @@ public class AdminController {
     @GET
     @Path("/suppliers")
     @Produces(MediaType.APPLICATION_JSON)
-    public List<SupplierSummary> listSuppliers() throws UnauthorizedAccessException {
-        return userAdminService.listSuppliers();
+    public List<SupplierSummary> listSuppliers(@QueryParam("productId") Integer productId) throws UnauthorizedAccessException {
+        return productId != null ? userAdminService.listSuppliersForProduct(productId) : userAdminService.listSuppliers();
     }
 
     @POST
