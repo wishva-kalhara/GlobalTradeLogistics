@@ -7,7 +7,10 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import me.wishva.globalTradeLogistics.core.dto.PurchaseOrderSummary;
 import me.wishva.globalTradeLogistics.core.enums.Role;
+import me.wishva.globalTradeLogistics.core.enums.ShipmentStatus;
+import me.wishva.globalTradeLogistics.core.exception.InvalidShipmentStateException;
 import me.wishva.globalTradeLogistics.core.exception.PurchaseOrderNotFoundException;
+import me.wishva.globalTradeLogistics.core.exception.ShipmentNotFoundException;
 import me.wishva.globalTradeLogistics.core.exception.UnknownPrincipalException;
 import me.wishva.globalTradeLogistics.core.interceptor.Audited;
 import me.wishva.globalTradeLogistics.core.interceptor.AuditInterceptor;
@@ -19,6 +22,7 @@ import me.wishva.globalTradeLogistics.core.model.Inventory;
 import me.wishva.globalTradeLogistics.core.model.Grn;
 import me.wishva.globalTradeLogistics.core.model.Product;
 import me.wishva.globalTradeLogistics.core.model.PurchaseOrder;
+import me.wishva.globalTradeLogistics.core.model.Shipment;
 import me.wishva.globalTradeLogistics.core.model.Supplier;
 import me.wishva.globalTradeLogistics.core.model.SupplierProvidingProduct;
 import me.wishva.globalTradeLogistics.core.security.CurrentPrincipalHolder;
@@ -68,10 +72,25 @@ public class PurchaseOrderServiceBean implements IPurchaseOrderService {
     @Override
     @RequiresRole(Role.WAREHOUSE_MANAGER)
     @Audited(resource = "PROCUREMENT")
-    public PurchaseOrderSummary recordGrn(Integer poId, Integer qty) throws PurchaseOrderNotFoundException {
-        PurchaseOrder po = em.find(PurchaseOrder.class, poId);
+    public PurchaseOrderSummary recordGrnForShipment(Integer shipmentId, Integer qty)
+            throws ShipmentNotFoundException, PurchaseOrderNotFoundException, InvalidShipmentStateException {
+        Shipment shipment = em.find(Shipment.class, shipmentId);
+        if (shipment == null) {
+            throw new ShipmentNotFoundException("No shipment found with id " + shipmentId);
+        }
+        if (shipment.getPurchaseOrdersPoId() == null) {
+            throw new InvalidShipmentStateException("Shipment " + shipmentId + " isn't linked to a purchase order");
+        }
+        if (shipment.getStatus() != ShipmentStatus.DELIVERED) {
+            throw new InvalidShipmentStateException("GRN can only be recorded once shipment " + shipmentId + " has been delivered");
+        }
+
+        PurchaseOrder po = em.find(PurchaseOrder.class, shipment.getPurchaseOrdersPoId());
         if (po == null) {
-            throw new PurchaseOrderNotFoundException("No purchase order found with id " + poId);
+            throw new PurchaseOrderNotFoundException("No purchase order found with id " + shipment.getPurchaseOrdersPoId());
+        }
+        if (po.getIsCompleted() != 0) {
+            throw new InvalidShipmentStateException("A GRN has already been recorded for shipment " + shipmentId);
         }
 
         Grn grn = new Grn();
@@ -100,6 +119,29 @@ public class PurchaseOrderServiceBean implements IPurchaseOrderService {
         List<PurchaseOrderSummary> summaries = new ArrayList<>();
         for (PurchaseOrder po : orders) {
             summaries.add(toSummary(po));
+        }
+        return summaries;
+    }
+
+    @Override
+    @RequiresRole(Role.VENDOR_REP)
+    public List<PurchaseOrderSummary> listShippableForSupplier() throws UnknownPrincipalException {
+        Supplier supplier = resolveSupplier();
+        List<PurchaseOrder> orders = em.createNamedQuery("PurchaseOrder.findBySupplier", PurchaseOrder.class)
+                .setParameter("supplierId", supplier.getSupplierId())
+                .getResultList();
+
+        List<PurchaseOrderSummary> summaries = new ArrayList<>();
+        for (PurchaseOrder po : orders) {
+            if (po.getIsCompleted() != 0) {
+                continue;
+            }
+            long existingShipments = em.createNamedQuery("Shipment.countByPurchaseOrder", Long.class)
+                    .setParameter("poId", po.getPoId())
+                    .getSingleResult();
+            if (existingShipments == 0) {
+                summaries.add(toSummary(po));
+            }
         }
         return summaries;
     }

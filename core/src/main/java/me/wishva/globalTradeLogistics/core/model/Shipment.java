@@ -19,13 +19,27 @@ import me.wishva.globalTradeLogistics.core.enums.ShipmentStatus;
  * Maps the existing {@code shipments} table (schema.postgres.sql).
  * {@code vessal_id} keeps its legacy column name (typo and all) — only the
  * Java field name is corrected to {@code vesselId}.
+ * <p>
+ * {@code purchase_orders_po_id} is a new nullable column (added here as a
+ * plain entity field, same {@code hibernate.hbm2ddl.auto=update}
+ * no-hand-written-migration approach used for {@code orders.status|}) — it
+ * links a shipment to the PO a supplier created it for. Nullable because the
+ * one demo shipment {@code ShipmentSeedBean} inserts predates this link.
  */
 @Entity
 @Table(name = "shipments")
 @NamedQueries({
         @NamedQuery(
                 name = "Shipment.findByStatus",
-                query = "SELECT s FROM Shipment s WHERE s.status = :status")
+                query = "SELECT s FROM Shipment s WHERE s.status = :status"),
+        @NamedQuery(
+                name = "Shipment.countByPurchaseOrder",
+                query = "SELECT COUNT(s) FROM Shipment s WHERE s.purchaseOrdersPoId = :poId"),
+        @NamedQuery(
+                name = "Shipment.findDeliveredAwaitingGrn",
+                query = "SELECT s FROM Shipment s WHERE s.status = :status "
+                        + "AND s.purchaseOrdersPoId IS NOT NULL "
+                        + "AND s.purchaseOrdersPoId NOT IN (SELECT po.poId FROM PurchaseOrder po WHERE po.isCompleted = 1)")
 })
 @Getter
 @Setter
@@ -58,4 +72,7 @@ public class Shipment {
 
     @Column(name = "ref")
     private String ref;
+
+    @Column(name = "purchase_orders_po_id")
+    private Integer purchaseOrdersPoId;
 }

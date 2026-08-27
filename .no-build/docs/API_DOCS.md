@@ -152,18 +152,22 @@ Coordinator orders more stock from a supplier.
 - `totalPrice` is computed as `qty × that product's current Inventory.unitPrice` (no independent PO pricing exists in this schema).
 - **Side effect**: publishes a `PROCUREMENT` audit event.
 
-### `POST /purchase-orders/{poId}/grn` 🔒 *(role: `WAREHOUSE_MANAGER`)*
-Record goods received against an open PO — increments stock and completes the PO.
-
-- **Body**: `{ "qty": 30 }` — positive.
-- **200**: `PurchaseOrderSummary` with `"completed": true`.
-- **400**: missing/non-positive `qty`.
-- **403**: caller isn't `WAREHOUSE_MANAGER`.
-- **404**: no PO with that id (`PurchaseOrderNotFoundException`).
-- **Side effects**: inserts a `grns` row; increments `inventory.qty` for that product; sets `purchase_orders.is_completed = 1`; publishes a `PROCUREMENT` audit event.
-
 ### `GET /purchase-orders` 🔒 *(role: `VENDOR_REP`)*
 - **200**: `[PurchaseOrderSummary, ...]` — every PO placed against the calling supplier (resolved from the JWT), most recent first.
+
+### `GET /purchase-orders/shippable` 🔒 *(role: `VENDOR_REP`)*
+- **200**: `[PurchaseOrderSummary, ...]` — the calling supplier's open (`completed: false`) POs that don't have a shipment yet. Feeds the create-shipment dropdown.
+
+### `POST /purchase-orders/{poId}/shipment` 🔒 *(role: `VENDOR_REP`)*
+Supplier ships one of their own open purchase orders — the first step of the ship → customs → GRN flow.
+
+- **Body**: `{ "trackingNumber": "string", "vesselId": "string", "type": "string" }` — all three required, non-blank.
+- **200**: `ShipmentSummary` — see §9 for shape; `status` starts `CREATED`, `poId` is the given PO.
+- **400**: missing/blank field.
+- **403**: caller isn't `VENDOR_REP`.
+- **404**: the PO doesn't exist, **or** exists but belongs to a different supplier (deliberately indistinguishable, same convention as `OrderNotFoundException`) (`PurchaseOrderNotFoundException`).
+- **409**: the PO is already completed, or already has a shipment (`InvalidShipmentStateException`).
+- **Side effect**: inserts a `shipments` row linked to the PO (`purchase_orders_po_id`); `warehouse_id` defaults to this single-warehouse deployment's one warehouse; publishes a `LOGISTICS` audit event.
 
 ### `POST /suppliers/me/products` 🔒 *(role: `VENDOR_REP`)*
 Register which products a supplier can provide, from which warehouse, and their lead time.
@@ -188,8 +192,24 @@ Register which products a supplier can provide, from which warehouse, and their 
 ## 9. Shipments & Customs 🔒 *(role: `CUSTOMS_AGENT`, except where noted)*
 
 ### `GET /shipments/{shipmentId}` 🔒
-- **200**: `ShipmentSummary` — `{ "shipmentId": 1, "trackingNumber": "string", "vesselId": "string", "type": "string", "warehouseId": 1, "status": "CREATED|IN_TRANSIT|DELIVERED|DELAYED", "shipmentType": "string|null", "ref": "string|null" }`
+- **200**: `ShipmentSummary` — `{ "shipmentId": 1, "trackingNumber": "string", "vesselId": "string", "type": "string", "warehouseId": 1, "status": "CREATED|IN_TRANSIT|DELIVERED|DELAYED", "shipmentType": "string|null", "ref": "string|null", "poId": 1 }`
 - **404**: no shipment with that id (`ShipmentNotFoundException`).
+- `poId` is the purchase order this shipment was created for (§7's `POST /purchase-orders/{poId}/shipment`) — `null` for the one legacy seeded shipment that predates the ship → customs → GRN flow.
+
+### `GET /shipments/awaiting-grn` 🔒 *(role: `WAREHOUSE_MANAGER`)*
+- **200**: `[ShipmentSummary, ...]` — shipments that are `DELIVERED`, linked to a PO, and whose PO isn't completed yet. Feeds the record-GRN dropdown.
+- **403**: caller isn't `WAREHOUSE_MANAGER`.
+
+### `POST /shipments/{shipmentId}/grn` 🔒 *(role: `WAREHOUSE_MANAGER`)*
+Record goods received for a delivered shipment — the last step of the ship → customs → GRN flow. Replaces the old PO-id-based GRN endpoint now that GRN is gated on shipment state.
+
+- **Body**: `{ "qty": 30 }` — positive.
+- **200**: `PurchaseOrderSummary` (the shipment's linked PO) with `"completed": true`.
+- **400**: missing/non-positive `qty`.
+- **403**: caller isn't `WAREHOUSE_MANAGER`.
+- **404**: no shipment with that id (`ShipmentNotFoundException`), or its linked PO vanished (`PurchaseOrderNotFoundException`).
+- **409**: the shipment isn't linked to a PO, isn't yet `DELIVERED`, or its PO was already completed (`InvalidShipmentStateException`).
+- **Side effects**: same as the old endpoint — inserts a `grns` row; increments `inventory.qty`; sets `purchase_orders.is_completed = 1`; publishes a `PROCUREMENT` audit event.
 
 ### `PUT /shipments/{shipmentId}/status` 🔒
 - **Body**: `{ "status": "CREATED|IN_TRANSIT|DELIVERED|DELAYED", "idempotencyKey": "string" }` — both required, `idempotencyKey` non-blank.
@@ -245,11 +265,12 @@ Every error response is `{"error": "<message>"}`. Status code is determined by w
 | Missing/invalid/expired JWT (`InvalidTokenException`) | 401 | `JwtAuthFilter`, on any 🔒 endpoint |
 | `UnauthorizedAccessException` | 403 | `RequiresRoleInterceptor`, on any role-gated endpoint |
 | `OrderNotFoundException` | 404 | `GET /orders/{id}` |
-| `PurchaseOrderNotFoundException` | 404 | `POST /purchase-orders/{id}/grn` |
-| `ShipmentNotFoundException` | 404 | Any `/shipments/{id}*` endpoint |
+| `PurchaseOrderNotFoundException` | 404 | `POST /purchase-orders/{id}/shipment`, `POST /shipments/{id}/grn` |
+| `ShipmentNotFoundException` | 404 | Any `/shipments/{id}*` endpoint, `POST /shipments/{id}/grn` |
 | `UnknownPrincipalException` | 404 | OTP request/verify, profile update (JWT resolves to no active row) |
 | `EmailAlreadyRegisteredException` | 409 | Self-service signup |
 | `InsufficientInventoryException` | 409 | `POST /orders` |
+| `InvalidShipmentStateException` | 409 | `POST /purchase-orders/{id}/shipment`, `POST /shipments/{id}/grn` |
 | `SupplyChainSystemException` (anything unexpected) | 500 | Any endpoint |
 
 ---
@@ -262,7 +283,9 @@ Every error response is `{"error": "<message>"}`. Status code is determined by w
 | POST | `/auth/otp/verify` | — | — | `OtpVerifyBody` | `AuthResponseBody` |
 | POST | `/auth/signup/customer` | — | — | `SignUpCustomerBody` | `AuthResponseBody` |
 | POST | `/auth/signup/supplier` | — | — | `SignUpSupplierBody` | `AuthResponseBody` |
+| GET | `/me/customer` | 🔒 | CUSTOMER | — | `ProfileSummary` |
 | PUT | `/me/customer` | 🔒 | CUSTOMER | `UpdateCustomerProfileBody` | 204 |
+| GET | `/me/supplier` | 🔒 | VENDOR_REP | — | `ProfileSummary` |
 | PUT | `/me/supplier` | 🔒 | VENDOR_REP | `UpdateSupplierProfileBody` | 204 |
 | GET | `/countries` | — | — | — | `[CountrySummary]` |
 | GET | `/admin/users` | 🔒 | ADMIN | — | `[UserSummary]` |
@@ -274,13 +297,19 @@ Every error response is `{"error": "<message>"}`. Status code is determined by w
 | GET | `/orders` | 🔒 | CUSTOMER | — | `[OrderSummary]` |
 | GET | `/orders/{orderId}` | 🔒 | CUSTOMER | — | `OrderSummary` |
 | POST | `/purchase-orders` | 🔒 | COORDINATOR | `CreatePurchaseOrderBody` | `PurchaseOrderSummary` |
-| POST | `/purchase-orders/{poId}/grn` | 🔒 | WAREHOUSE_MANAGER | `RecordGrnBody` | `PurchaseOrderSummary` |
 | GET | `/purchase-orders` | 🔒 | VENDOR_REP | — | `[PurchaseOrderSummary]` |
+| GET | `/purchase-orders/shippable` | 🔒 | VENDOR_REP | — | `[PurchaseOrderSummary]` |
+| POST | `/purchase-orders/{poId}/shipment` | 🔒 | VENDOR_REP | `CreateShipmentBody` | `ShipmentSummary` |
 | POST | `/suppliers/me/products` | 🔒 | VENDOR_REP | `AddProductOfferingBody` | 201 |
 | GET | `/inventory/{warehouseId}` | 🔒 | ADMIN, COORDINATOR, WAREHOUSE_MANAGER | — | `[InventorySummary]` |
+| GET | `/inventory/warehouses` | 🔒 | ADMIN, COORDINATOR, WAREHOUSE_MANAGER, VENDOR_REP | — | `[WarehouseSummary]` |
 | GET | `/shipments/{shipmentId}` | 🔒 | CUSTOMS_AGENT | — | `ShipmentSummary` |
+| GET | `/shipments/awaiting-grn` | 🔒 | WAREHOUSE_MANAGER | — | `[ShipmentSummary]` |
+| POST | `/shipments/{shipmentId}/grn` | 🔒 | WAREHOUSE_MANAGER | `RecordGrnBody` | `PurchaseOrderSummary` |
 | PUT | `/shipments/{shipmentId}/status` | 🔒 | CUSTOMS_AGENT | `UpdateShipmentStatusBody` | `ShipmentSummary` |
 | POST | `/shipments/{shipmentId}/customs` | 🔒 | CUSTOMS_AGENT | `CreateCustomsRecordBody` | 201 |
 | POST | `/shipments/{shipmentId}/notify-carrier` | 🔒 | any authenticated | — | `ShipmentSummary` |
+| GET | `/admin/sales-summary` | 🔒 | ADMIN, COORDINATOR | — | `SalesSummary` |
+| GET | `/admin/suppliers` | 🔒 | ADMIN, COORDINATOR | — | `[SupplierSummary]` |
 | GET | `/admin/vendor-performance` | 🔒 | ADMIN, COORDINATOR | — | `[AuditRecordSummary]` |
 | GET | `/healthz` | — | — | — | text |

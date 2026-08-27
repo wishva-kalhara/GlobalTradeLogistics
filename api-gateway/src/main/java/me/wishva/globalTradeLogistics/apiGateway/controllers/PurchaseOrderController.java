@@ -10,23 +10,28 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import me.wishva.globalTradeLogistics.apiGateway.dto.CreatePurchaseOrderBody;
-import me.wishva.globalTradeLogistics.apiGateway.dto.RecordGrnBody;
+import me.wishva.globalTradeLogistics.apiGateway.dto.CreateShipmentBody;
 import me.wishva.globalTradeLogistics.apiGateway.security.Secured;
 import me.wishva.globalTradeLogistics.core.dto.PurchaseOrderSummary;
+import me.wishva.globalTradeLogistics.core.dto.ShipmentSummary;
+import me.wishva.globalTradeLogistics.core.exception.InvalidShipmentStateException;
 import me.wishva.globalTradeLogistics.core.exception.PurchaseOrderNotFoundException;
 import me.wishva.globalTradeLogistics.core.exception.UnauthorizedAccessException;
 import me.wishva.globalTradeLogistics.core.exception.UnknownPrincipalException;
 import me.wishva.globalTradeLogistics.core.local.IPurchaseOrderService;
+import me.wishva.globalTradeLogistics.core.local.IShipmentService;
 
 import java.util.List;
 
 /**
  * Purchase order lifecycle — a pure pass-through to procurement-svc's
- * {@code IPurchaseOrderService}, per api-gateway's "REST façade, no new
- * business logic" convention. Role enforcement ({@code COORDINATOR} for
- * creating, {@code WAREHOUSE_MANAGER} for recording a GRN, {@code VENDOR_REP}
- * for the supplier's own list) happens at the EJB layer via
- * {@code @RequiresRole} — {@code @Secured} here only requires a valid JWT.
+ * {@code IPurchaseOrderService} and logistics-svc's {@code IShipmentService},
+ * per api-gateway's "REST façade, no new business logic" convention. Role
+ * enforcement ({@code COORDINATOR} for creating, {@code VENDOR_REP} for the
+ * supplier's own list/shippable-list/shipment-creation) happens at the EJB
+ * layer via {@code @RequiresRole} — {@code @Secured} here only requires a
+ * valid JWT. GRN recording moved to {@link ShipmentController} — see its
+ * javadoc for why.
  */
 @Path("/purchase-orders")
 @Secured
@@ -37,6 +42,9 @@ public class PurchaseOrderController {
     @EJB
     private IPurchaseOrderService purchaseOrderService;
 
+    @EJB
+    private IShipmentService shipmentService;
+
     @POST
     public PurchaseOrderSummary createPo(CreatePurchaseOrderBody body) throws UnauthorizedAccessException {
         if (body == null || body.getSupplierId() == null || body.getProductId() == null
@@ -46,18 +54,26 @@ public class PurchaseOrderController {
         return purchaseOrderService.createPo(body.getSupplierId(), body.getProductId(), body.getQty());
     }
 
-    @POST
-    @Path("/{poId}/grn")
-    public PurchaseOrderSummary recordGrn(@PathParam("poId") Integer poId, RecordGrnBody body)
-            throws PurchaseOrderNotFoundException, UnauthorizedAccessException {
-        if (body == null || body.getQty() == null || body.getQty() <= 0) {
-            throw new BadRequestException("A positive qty is required");
-        }
-        return purchaseOrderService.recordGrn(poId, body.getQty());
-    }
-
     @GET
     public List<PurchaseOrderSummary> listForSupplier() throws UnauthorizedAccessException, UnknownPrincipalException {
         return purchaseOrderService.listForSupplier();
+    }
+
+    @GET
+    @Path("/shippable")
+    public List<PurchaseOrderSummary> listShippableForSupplier() throws UnauthorizedAccessException, UnknownPrincipalException {
+        return purchaseOrderService.listShippableForSupplier();
+    }
+
+    @POST
+    @Path("/{poId}/shipment")
+    public ShipmentSummary createShipment(@PathParam("poId") Integer poId, CreateShipmentBody body)
+            throws PurchaseOrderNotFoundException, InvalidShipmentStateException, UnauthorizedAccessException, UnknownPrincipalException {
+        if (body == null || body.getTrackingNumber() == null || body.getTrackingNumber().isBlank()
+                || body.getVesselId() == null || body.getVesselId().isBlank()
+                || body.getType() == null || body.getType().isBlank()) {
+            throw new BadRequestException("trackingNumber, vesselId and type are required");
+        }
+        return shipmentService.createShipmentForPurchaseOrder(poId, body.getTrackingNumber(), body.getVesselId(), body.getType());
     }
 }

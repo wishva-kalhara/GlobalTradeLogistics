@@ -58,6 +58,10 @@
                 <h2 class="font-medium text-gray-900">My Purchase Orders</h2>
                 <p class="mt-1 text-sm text-gray-500">View orders GlobalTrade has placed with you.</p>
             </a>
+            <a href="/seller/shipments/create.jsp" class="block rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-green-300 hover:shadow-md">
+                <h2 class="font-medium text-gray-900">Create Shipment</h2>
+                <p class="mt-1 text-sm text-gray-500">Ship an open purchase order for customs pickup.</p>
+            </a>
             <a href="/seller/products/add-offering.jsp" class="block rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-green-300 hover:shadow-md">
                 <h2 class="font-medium text-gray-900">Add Product Offering</h2>
                 <p class="mt-1 text-sm text-gray-500">List a new product you can supply.</p>

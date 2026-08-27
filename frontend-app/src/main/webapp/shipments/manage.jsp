@@ -38,6 +38,7 @@
                 <div><dt class="text-gray-500">Vessel</dt><dd id="sh-vessel" class="font-medium text-gray-900"></dd></div>
                 <div><dt class="text-gray-500">Type</dt><dd id="sh-type" class="font-medium text-gray-900"></dd></div>
                 <div><dt class="text-gray-500">Warehouse</dt><dd id="sh-warehouse" class="font-medium text-gray-900"></dd></div>
+                <div><dt class="text-gray-500">Purchase order</dt><dd id="sh-poId" class="font-medium text-gray-900"></dd></div>
                 <div><dt class="text-gray-500">Carrier ref</dt><dd id="sh-ref" class="font-medium text-gray-900">&mdash;</dd></div>
             </dl>
         </div>
@@ -112,6 +113,7 @@
         document.getElementById("sh-vessel").textContent = sh.vesselId;
         document.getElementById("sh-type").textContent = sh.type;
         document.getElementById("sh-warehouse").textContent = sh.warehouseId;
+        document.getElementById("sh-poId").textContent = sh.poId ? ("#" + sh.poId) : "-";
         document.getElementById("sh-ref").textContent = sh.ref || "-";
         document.getElementById("new-status").value = sh.status;
         shipmentCard.classList.remove("hidden");

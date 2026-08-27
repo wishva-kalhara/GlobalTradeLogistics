@@ -18,6 +18,7 @@
                      class="absolute right-0 z-10 mt-2 hidden w-56 rounded-md border border-gray-200 bg-white py-1 shadow-lg">
                     <a href="/seller/me/update-profile.jsp" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Update Profile</a>
                     <a href="/seller/purchase-orders.jsp" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">My Purchase Orders</a>
+                    <a href="/seller/shipments/create.jsp" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Create Shipment</a>
                     <a href="/seller/products/add-offering.jsp" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Add Product Offering</a>
                 </div>
             </div>

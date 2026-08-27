@@ -12,19 +12,31 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import me.wishva.globalTradeLogistics.apiGateway.dto.CreateCustomsRecordBody;
+import me.wishva.globalTradeLogistics.apiGateway.dto.RecordGrnBody;
 import me.wishva.globalTradeLogistics.apiGateway.dto.UpdateShipmentStatusBody;
 import me.wishva.globalTradeLogistics.apiGateway.security.Secured;
+import me.wishva.globalTradeLogistics.core.dto.PurchaseOrderSummary;
 import me.wishva.globalTradeLogistics.core.dto.ShipmentSummary;
 import me.wishva.globalTradeLogistics.core.enums.ShipmentStatus;
+import me.wishva.globalTradeLogistics.core.exception.InvalidShipmentStateException;
+import me.wishva.globalTradeLogistics.core.exception.PurchaseOrderNotFoundException;
 import me.wishva.globalTradeLogistics.core.exception.ShipmentNotFoundException;
 import me.wishva.globalTradeLogistics.core.exception.UnauthorizedAccessException;
+import me.wishva.globalTradeLogistics.core.local.IPurchaseOrderService;
 import me.wishva.globalTradeLogistics.core.local.IShipmentService;
+
+import java.util.List;
 
 /**
  * Shipment status/customs-clearance flows — a pure pass-through to
  * logistics-svc's {@code IShipmentService}. {@code @RequiresRole(CUSTOMS_AGENT)}
  * is enforced at the EJB layer; {@code @Secured} here only requires a valid
  * JWT.
+ * <p>
+ * GRN recording lives here rather than on {@code PurchaseOrderController}
+ * because the create-shipment → customs → GRN flow now gates it on the
+ * <em>shipment's</em> state (must be {@code DELIVERED}) — the warehouse
+ * manager picks a shipment, not a raw PO id.
  */
 @Path("/shipments")
 @Secured
@@ -34,6 +46,25 @@ public class ShipmentController {
 
     @EJB
     private IShipmentService shipmentService;
+
+    @EJB
+    private IPurchaseOrderService purchaseOrderService;
+
+    @GET
+    @Path("/awaiting-grn")
+    public List<ShipmentSummary> listDeliveredAwaitingGrn() throws UnauthorizedAccessException {
+        return shipmentService.listDeliveredAwaitingGrn();
+    }
+
+    @POST
+    @Path("/{shipmentId}/grn")
+    public PurchaseOrderSummary recordGrn(@PathParam("shipmentId") Integer shipmentId, RecordGrnBody body)
+            throws ShipmentNotFoundException, PurchaseOrderNotFoundException, InvalidShipmentStateException, UnauthorizedAccessException {
+        if (body == null || body.getQty() == null || body.getQty() <= 0) {
+            throw new BadRequestException("A positive qty is required");
+        }
+        return purchaseOrderService.recordGrnForShipment(shipmentId, body.getQty());
+    }
 
     @GET
     @Path("/{shipmentId}")

@@ -23,6 +23,7 @@ public class ShipmentSummary implements Serializable, Auditable {
     private ShipmentStatus status;
     private String shipmentType;
     private String ref;
+    private Integer poId;
 
     @Override
     @JsonbTransient

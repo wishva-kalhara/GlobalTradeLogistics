@@ -12,16 +12,19 @@
 <main class="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
     <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <h1 class="text-xl font-semibold text-gray-900">Record Goods Received (GRN)</h1>
-        <p class="mt-1 text-sm text-gray-500">Confirm goods that arrived against an open purchase order &mdash; this adds the quantity back into stock and marks the PO complete.</p>
+        <p class="mt-1 text-sm text-gray-500">Confirm goods that arrived for a delivered shipment &mdash; this adds the quantity back into stock and marks its purchase order complete.</p>
 
         <div id="alert-error" class="mt-4 hidden rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"></div>
         <div id="alert-info" class="mt-4 hidden rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700"></div>
+        <div id="empty-state" class="mt-4 hidden text-sm text-gray-500">No delivered shipments are awaiting a GRN right now.</div>
 
         <form id="grn-form" class="mt-6 space-y-4">
             <div>
-                <label class="mb-1 block text-sm font-medium text-gray-700">Purchase order ID</label>
-                <input type="number" id="poId" min="1" required
-                       class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30"/>
+                <label class="mb-1 block text-sm font-medium text-gray-700">Delivered shipment</label>
+                <select id="shipmentId" required
+                        class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30">
+                    <option value="">Select a shipment&hellip;</option>
+                </select>
             </div>
             <div>
                 <label class="mb-1 block text-sm font-medium text-gray-700">Quantity received</label>
@@ -52,6 +55,41 @@
 
     const errorEl = document.getElementById("alert-error");
     const infoEl = document.getElementById("alert-info");
+    const emptyEl = document.getElementById("empty-state");
+
+    (async function loadShipmentsAwaitingGrn() {
+        try {
+            const res = await fetch("/api/v1/shipments/awaiting-grn", {
+                headers: { "Authorization": "Bearer " + session.token },
+            });
+            if (res.status === 401) {
+                localStorage.removeItem("gtl.app.session");
+                window.location.href = "/app/login.jsp";
+                return;
+            }
+            if (!res.ok) {
+                const data = await res.json().catch(function () { return {}; });
+                throw new Error(data.error || ("status " + res.status));
+            }
+            const shipments = await res.json();
+            if (shipments.length === 0) {
+                emptyEl.classList.remove("hidden");
+                document.getElementById("grn-form").classList.add("hidden");
+                return;
+            }
+
+            const select = document.getElementById("shipmentId");
+            shipments.forEach(function (sh) {
+                const option = document.createElement("option");
+                option.value = sh.shipmentId;
+                option.textContent = "Shipment #" + sh.shipmentId + " (PO #" + sh.poId + ", " + sh.trackingNumber + ")";
+                select.appendChild(option);
+            });
+        } catch (err) {
+            errorEl.textContent = "Could not load delivered shipments: " + err.message;
+            errorEl.classList.remove("hidden");
+        }
+    })();
 
     document.getElementById("grn-form").addEventListener("submit", async function (e) {
         e.preventDefault();
@@ -59,11 +97,11 @@
         infoEl.classList.add("hidden");
         document.getElementById("result-card").classList.add("hidden");
 
-        const poId = document.getElementById("poId").value;
+        const shipmentId = document.getElementById("shipmentId").value;
         const body = { qty: parseInt(document.getElementById("qty").value, 10) };
 
         try {
-            const res = await fetch("/api/v1/purchase-orders/" + poId + "/grn", {
+            const res = await fetch("/api/v1/shipments/" + shipmentId + "/grn", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -90,6 +128,7 @@
             document.getElementById("result-card").classList.remove("hidden");
 
             document.getElementById("grn-form").reset();
+            document.getElementById("shipmentId").querySelector("option[value='" + shipmentId + "']").remove();
         } catch (err) {
             errorEl.textContent = "Could not record GRN: " + err.message;
             errorEl.classList.remove("hidden");
