@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vendor Performance — Staff Console</title>
+    <title>Vendor Performance &mdash; Staff Console</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="h-full">
@@ -15,7 +15,7 @@
         <p class="mt-1 text-sm text-gray-500">On-time delivery scoring, recomputed weekly per supplier.</p>
 
         <div id="alert-error" class="mt-4 hidden rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"></div>
-        <div id="empty-state" class="mt-6 hidden text-sm text-gray-500">No vendor performance reports yet — they're generated automatically once a week.</div>
+        <div id="empty-state" class="mt-6 hidden text-sm text-gray-500">No vendor performance reports yet &mdash; they're generated automatically once a week.</div>
 
         <div class="mt-6 overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200 text-sm">

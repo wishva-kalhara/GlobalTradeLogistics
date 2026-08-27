@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Application User Management — Staff Console</title>
+    <title>Application User Management &mdash; Staff Console</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="h-full">
@@ -276,7 +276,7 @@
         try {
             await submitJson("/api/v1/admin/users", body, document.getElementById("onboard-modal-alert-error"));
             closeModal("onboard-modal");
-            showInfo("User " + body.email + " onboarded — an onboarding email has been queued.");
+            showInfo("User " + body.email + " onboarded - an onboarding email has been queued.");
             await loadUsers();
         } catch (err) {
             // Already surfaced in the modal.
@@ -295,7 +295,7 @@
         try {
             await submitJson("/api/v1/admin/customers", body, document.getElementById("register-customer-modal-alert-error"));
             closeModal("register-customer-modal");
-            showInfo("Customer " + body.email + " registered — an onboarding email has been queued.");
+            showInfo("Customer " + body.email + " registered - an onboarding email has been queued.");
         } catch (err) {
             // Already surfaced in the modal.
         }
@@ -313,7 +313,7 @@
         try {
             await submitJson("/api/v1/admin/suppliers", body, document.getElementById("register-supplier-modal-alert-error"));
             closeModal("register-supplier-modal");
-            showInfo("Supplier " + body.email + " registered — an onboarding email has been queued.");
+            showInfo("Supplier " + body.email + " registered - an onboarding email has been queued.");
         } catch (err) {
             // Already surfaced in the modal.
         }

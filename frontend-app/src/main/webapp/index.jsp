@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GlobalTrade Logistics — Staff Console</title>
+    <title>GlobalTrade Logistics &mdash; Staff Console</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 </head>
@@ -14,7 +14,7 @@
     <div id="guest-card" class="mx-auto hidden max-w-xl">
         <div class="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
             <span class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-green-600 text-xl font-bold text-white">GT</span>
-            <h1 class="text-2xl font-semibold text-gray-900">GlobalTrade Logistics — Staff Console</h1>
+            <h1 class="text-2xl font-semibold text-gray-900">GlobalTrade Logistics &mdash; Staff Console</h1>
             <p class="mt-2 text-gray-500">Internal staff sign in with a one-time email code. Accounts are provisioned by an administrator.</p>
             <a href="/app/login.jsp" class="mt-6 inline-block rounded-md bg-green-600 px-5 py-2.5 font-medium text-white hover:bg-green-700">Log in</a>
         </div>
@@ -33,11 +33,11 @@
             <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
                     <p class="text-sm text-gray-500">Total sales</p>
-                    <p id="stat-total-sales" class="mt-1 text-2xl font-semibold text-gray-900">—</p>
+                    <p id="stat-total-sales" class="mt-1 text-2xl font-semibold text-gray-900">&mdash;</p>
                 </div>
                 <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
                     <p class="text-sm text-gray-500">Total orders</p>
-                    <p id="stat-total-orders" class="mt-1 text-2xl font-semibold text-gray-900">—</p>
+                    <p id="stat-total-orders" class="mt-1 text-2xl font-semibold text-gray-900">&mdash;</p>
                 </div>
             </div>
 
@@ -51,8 +51,8 @@
                     <canvas id="chart-top-products" class="mt-3"></canvas>
                 </div>
                 <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm lg:col-span-2">
-                    <h3 class="text-sm font-medium text-gray-700">Vendor performance — on-time delivery rate</h3>
-                    <p id="vendor-performance-empty" class="mt-3 hidden text-sm text-gray-500">No vendor performance reports yet — they're generated automatically once a week.</p>
+                    <h3 class="text-sm font-medium text-gray-700">Vendor performance &mdash; on-time delivery rate</h3>
+                    <p id="vendor-performance-empty" class="mt-3 hidden text-sm text-gray-500">No vendor performance reports yet &mdash; they're generated automatically once a week.</p>
                     <canvas id="chart-vendor-performance" class="mt-3"></canvas>
                 </div>
             </div>
@@ -61,7 +61,7 @@
 </main>
 
 <script>
-    // Same role → page mapping as nav.jsp's account menu.
+    // Same role -> page mapping as nav.jsp's account menu.
     const ROLE_FUNCTIONS = {
         ADMIN: [
             { href: "/app/app-user-management.jsp", label: "Application User Management", description: "Onboard staff accounts, or register a customer/supplier directly." },

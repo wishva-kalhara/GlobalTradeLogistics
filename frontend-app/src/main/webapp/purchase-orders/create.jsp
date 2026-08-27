@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Purchase Order — Staff Console</title>
+    <title>Create Purchase Order &mdash; Staff Console</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="h-full">
@@ -48,7 +48,7 @@
             <div><dt class="text-gray-500">Quantity</dt><dd id="result-qty" class="font-medium text-gray-900"></dd></div>
             <div><dt class="text-gray-500">Total price</dt><dd id="result-total" class="font-medium text-gray-900"></dd></div>
         </dl>
-        <p class="mt-3 text-xs text-gray-400">Hand this PO ID to the warehouse manager — they'll need it to record the GRN when goods arrive.</p>
+        <p class="mt-3 text-xs text-gray-400">Hand this PO ID to the warehouse manager &mdash; they'll need it to record the GRN when goods arrive.</p>
     </div>
 </main>
 

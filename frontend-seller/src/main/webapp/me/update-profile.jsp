@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Update profile — Seller Portal</title>
+    <title>Update profile &mdash; Seller Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="h-full">

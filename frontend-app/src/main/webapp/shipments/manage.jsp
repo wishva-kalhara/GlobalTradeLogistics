@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Shipments — Staff Console</title>
+    <title>Manage Shipments &mdash; Staff Console</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="h-full">
@@ -112,7 +112,7 @@
         document.getElementById("sh-vessel").textContent = sh.vesselId;
         document.getElementById("sh-type").textContent = sh.type;
         document.getElementById("sh-warehouse").textContent = sh.warehouseId;
-        document.getElementById("sh-ref").textContent = sh.ref || "—";
+        document.getElementById("sh-ref").textContent = sh.ref || "-";
         document.getElementById("new-status").value = sh.status;
         shipmentCard.classList.remove("hidden");
     }
@@ -207,7 +207,7 @@
                 throw new Error(data.error || ("status " + res.status));
             }
             renderShipment(data);
-            showInfo("Carrier notified — reference " + data.ref + ".");
+            showInfo("Carrier notified - reference " + data.ref + ".");
         } catch (err) {
             showError("Could not notify carrier: " + err.message);
         }

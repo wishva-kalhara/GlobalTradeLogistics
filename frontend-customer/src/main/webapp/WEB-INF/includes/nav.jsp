@@ -39,7 +39,7 @@
         const loginLink = document.getElementById("nav-login-link");
 
         if (session && session.token) {
-            sessionEl.textContent = session.email + " · " + session.role;
+            sessionEl.textContent = session.email + " | " + session.role;
             sessionEl.classList.remove("hidden");
             accountEl.classList.remove("hidden");
             logoutLink.classList.remove("hidden");

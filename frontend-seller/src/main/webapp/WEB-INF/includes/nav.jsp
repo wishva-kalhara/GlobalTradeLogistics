@@ -2,7 +2,7 @@
     <div class="mx-auto flex h-16 max-w-5xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <a href="/seller/index.jsp" class="flex items-center gap-2">
             <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-green-600 text-sm font-bold text-white">GT</span>
-            <span class="text-lg font-semibold text-gray-900">GlobalTrade Logistics — Seller</span>
+            <span class="text-lg font-semibold text-gray-900">GlobalTrade Logistics &mdash; Seller</span>
         </a>
         <div class="flex items-center gap-3 text-sm">
             <span id="nav-session" class="hidden text-gray-500 sm:inline"></span>
@@ -38,7 +38,7 @@
         const loginLink = document.getElementById("nav-login-link");
 
         if (session && session.token) {
-            sessionEl.textContent = session.email + " · " + session.role;
+            sessionEl.textContent = session.email + " | " + session.role;
             sessionEl.classList.remove("hidden");
             accountEl.classList.remove("hidden");
             logoutLink.classList.remove("hidden");

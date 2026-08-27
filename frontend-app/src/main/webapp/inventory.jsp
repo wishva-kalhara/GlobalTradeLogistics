@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Warehouse Inventory — Staff Console</title>
+    <title>Warehouse Inventory &mdash; Staff Console</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="h-full">
@@ -13,7 +13,7 @@
     <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
             <h1 class="text-xl font-semibold text-gray-900">Warehouse Inventory</h1>
-            <p class="mt-1 text-sm text-gray-500">Current stock levels — rows below reorder level are highlighted.</p>
+            <p class="mt-1 text-sm text-gray-500">Current stock levels &mdash; rows below reorder level are highlighted.</p>
         </div>
         <div>
             <label class="mb-1 block text-xs font-medium text-gray-700">Warehouse</label>

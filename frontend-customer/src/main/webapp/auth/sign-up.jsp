@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create account — GlobalTrade Logistics</title>
+    <title>Create account &mdash; GlobalTrade Logistics</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="h-full">

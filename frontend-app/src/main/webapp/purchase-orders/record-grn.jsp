@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Record GRN — Staff Console</title>
+    <title>Record GRN &mdash; Staff Console</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="h-full">
@@ -12,7 +12,7 @@
 <main class="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
     <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <h1 class="text-xl font-semibold text-gray-900">Record Goods Received (GRN)</h1>
-        <p class="mt-1 text-sm text-gray-500">Confirm goods that arrived against an open purchase order — this adds the quantity back into stock and marks the PO complete.</p>
+        <p class="mt-1 text-sm text-gray-500">Confirm goods that arrived against an open purchase order &mdash; this adds the quantity back into stock and marks the PO complete.</p>
 
         <div id="alert-error" class="mt-4 hidden rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"></div>
         <div id="alert-info" class="mt-4 hidden rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700"></div>

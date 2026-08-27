@@ -251,7 +251,7 @@
 
         placeOrderBtn.disabled = true;
         placeOrderSpinner.classList.remove("hidden");
-        placeOrderLabel.textContent = "Placing order…";
+        placeOrderLabel.textContent = "Placing order...";
 
         try {
             const res = await fetch("/api/v1/orders", {
@@ -271,7 +271,7 @@
             if (!res.ok) {
                 throw new Error(data.error || ("status " + res.status));
             }
-            showInfo("Order #" + data.orderId + " placed — total $" + data.totalPrice.toFixed(2) + ". View it under My Orders.");
+            showInfo("Order #" + data.orderId + " placed - total $" + data.totalPrice.toFixed(2) + ". View it under My Orders.");
             for (const key in quantities) {
                 quantities[key] = 0;
             }
