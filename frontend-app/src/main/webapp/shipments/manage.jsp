@@ -17,14 +17,13 @@
         <div id="alert-error" class="mt-4 hidden rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"></div>
         <div id="alert-info" class="mt-4 hidden rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700"></div>
 
-        <form id="lookup-form" class="mt-6 flex items-end gap-3">
-            <div class="flex-1">
-                <label class="mb-1 block text-sm font-medium text-gray-700">Shipment ID</label>
-                <input type="number" id="shipmentId" min="1" required
-                       class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30"/>
-            </div>
-            <button type="submit" class="rounded-md bg-gray-900 px-4 py-2 font-medium text-white hover:bg-gray-800">Load</button>
-        </form>
+        <div class="mt-6">
+            <label class="mb-1 block text-sm font-medium text-gray-700">Shipment</label>
+            <select id="shipmentId"
+                    class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30">
+                <option value="">Select a shipment&hellip;</option>
+            </select>
+        </div>
     </div>
 
     <div id="shipment-card" class="mt-6 hidden space-y-6">
@@ -152,14 +151,49 @@
         return data;
     }
 
-    document.getElementById("lookup-form").addEventListener("submit", async function (e) {
-        e.preventDefault();
+    async function loadShipmentOptions(selectedShipmentId) {
+        const select = document.getElementById("shipmentId");
+        try {
+            const res = await fetch("/api/v1/shipments", {
+                headers: { "Authorization": "Bearer " + session.token },
+            });
+            if (res.status === 401) {
+                localStorage.removeItem("gtl.app.session");
+                window.location.href = "/app/login.jsp";
+                return;
+            }
+            if (!res.ok) {
+                const data = await res.json().catch(function () { return {}; });
+                throw new Error(data.error || ("status " + res.status));
+            }
+            const shipments = await res.json();
+
+            select.innerHTML = "";
+            select.appendChild(new Option("Select a shipment…", ""));
+            shipments.forEach(function (sh) {
+                select.appendChild(new Option(
+                        "Shipment #" + sh.shipmentId + " — " + sh.trackingNumber + " (" + sh.status + ")",
+                        sh.shipmentId));
+            });
+            if (selectedShipmentId) {
+                select.value = selectedShipmentId;
+            }
+        } catch (err) {
+            showError("Could not load shipments: " + err.message);
+        }
+    }
+
+    document.getElementById("shipmentId").addEventListener("change", async function () {
         errorEl.classList.add("hidden");
         infoEl.classList.add("hidden");
         shipmentCard.classList.add("hidden");
 
+        if (!this.value) {
+            return;
+        }
+
         try {
-            const sh = await loadShipment(document.getElementById("shipmentId").value);
+            const sh = await loadShipment(this.value);
             if (sh) {
                 renderShipment(sh);
             }
@@ -167,6 +201,8 @@
             showError("Could not load shipment: " + err.message);
         }
     });
+
+    loadShipmentOptions();
 
     document.getElementById("status-form").addEventListener("submit", async function (e) {
         e.preventDefault();
@@ -187,6 +223,7 @@
                 throw new Error(data.error || ("status " + res.status));
             }
             renderShipment(data);
+            await loadShipmentOptions(currentShipmentId);
             showInfo("Shipment #" + data.shipmentId + " status updated to " + data.status + ".");
         } catch (err) {
             showError("Could not update status: " + err.message);
