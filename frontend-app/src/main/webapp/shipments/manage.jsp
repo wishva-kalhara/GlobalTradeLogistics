@@ -62,34 +62,34 @@
 
         <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
             <h3 class="font-medium text-gray-900">Record customs clearance</h3>
-            <p class="mt-1 text-xs text-gray-400">A GRN can't be recorded for this shipment until its customs status reaches CLEARED.</p>
+            <p class="mt-1 text-xs text-gray-400">Only available while the shipment is IN_TRANSIT. A GRN can't be recorded for this shipment until its customs status reaches CLEARED.</p>
             <form id="customs-form" class="mt-3 flex items-end gap-3">
                 <div class="flex-1">
                     <label class="mb-1 block text-sm font-medium text-gray-700">Declaration number</label>
-                    <input type="text" id="declaration-number"
-                           class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30"/>
+                    <input type="text" id="declaration-number" disabled
+                           class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30 disabled:bg-gray-50 disabled:text-gray-400"/>
                 </div>
-                <button type="submit" class="rounded-md bg-green-600 px-4 py-2 font-medium text-white hover:bg-green-700">Create Record</button>
+                <button type="submit" disabled class="rounded-md bg-green-600 px-4 py-2 font-medium text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50">Create Record</button>
             </form>
 
             <form id="customs-status-form" class="mt-4 flex items-end gap-3 border-t border-gray-100 pt-4">
                 <div class="flex-1">
                     <label class="mb-1 block text-sm font-medium text-gray-700">Update customs status</label>
-                    <select id="new-customs-status"
-                            class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30">
+                    <select id="new-customs-status" disabled
+                            class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30 disabled:bg-gray-50 disabled:text-gray-400">
                         <option value="PENDING">PENDING</option>
                         <option value="CLEARED">CLEARED</option>
                         <option value="HELD">HELD</option>
                     </select>
                 </div>
-                <button type="submit" class="rounded-md bg-gray-900 px-4 py-2 font-medium text-white hover:bg-gray-800">Update</button>
+                <button type="submit" disabled class="rounded-md bg-gray-900 px-4 py-2 font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50">Update</button>
             </form>
         </div>
 
         <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
             <h3 class="font-medium text-gray-900">Carrier system</h3>
-            <p class="mt-1 text-sm text-gray-500">Simulates notifying the external carrier system and stores the reference it returns.</p>
-            <button id="notify-carrier-btn" type="button" class="mt-3 rounded-md border border-gray-300 px-4 py-2 font-medium text-gray-700 hover:bg-gray-50">Notify Carrier</button>
+            <p class="mt-1 text-sm text-gray-500">Simulates notifying the external carrier system and stores the reference it returns. Only available once customs status is CLEARED.</p>
+            <button id="notify-carrier-btn" type="button" disabled class="mt-3 rounded-md border border-gray-300 px-4 py-2 font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50">Notify Carrier</button>
         </div>
     </div>
 </main>
@@ -130,8 +130,24 @@
         document.getElementById("sh-poId").textContent = sh.poId ? ("#" + sh.poId) : "-";
         document.getElementById("sh-customs-status").textContent = sh.customsStatus || "-";
         document.getElementById("sh-ref").textContent = sh.ref || "-";
-        document.getElementById("new-status").value = sh.status;
+
+        const statusSelect = document.getElementById("new-status");
+        statusSelect.innerHTML = "";
+        (sh.status === "CREATED" ? ["IN_TRANSIT"] : ["IN_TRANSIT", "DELIVERED", "DELAYED"]).forEach(function (s) {
+            statusSelect.appendChild(new Option(s, s));
+        });
+        statusSelect.value = sh.status;
+
         document.getElementById("new-customs-status").value = sh.customsStatus || "PENDING";
+
+        const customsEnabled = sh.status === "IN_TRANSIT";
+        document.getElementById("declaration-number").disabled = !customsEnabled;
+        document.getElementById("new-customs-status").disabled = !customsEnabled;
+        document.querySelector("#customs-form button[type='submit']").disabled = !customsEnabled;
+        document.querySelector("#customs-status-form button[type='submit']").disabled = !customsEnabled;
+
+        document.getElementById("notify-carrier-btn").disabled = sh.customsStatus !== "CLEARED";
+
         shipmentCard.classList.remove("hidden");
     }
 
