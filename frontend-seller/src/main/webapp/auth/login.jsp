@@ -96,11 +96,26 @@
                 throw new Error(data.error || ("status " + res.status));
             }
             localStorage.setItem("gtl.seller.session", JSON.stringify(data));
-            window.location.href = "/seller/me/update-profile.jsp";
+            window.location.href = await hasCompletedProfile(data.token) ? "/seller/index.jsp" : "/seller/me/update-profile.jsp";
         } catch (err) {
             showAlert("error", "Could not verify code: " + err.message);
         }
     });
+
+    async function hasCompletedProfile(token) {
+        try {
+            const res = await fetch("/api/v1/me/supplier", {
+                headers: { "Authorization": "Bearer " + token },
+            });
+            if (!res.ok) {
+                return false;
+            }
+            const profile = await res.json();
+            return !!(profile.fullName && profile.fullName.trim());
+        } catch (err) {
+            return false;
+        }
+    }
 </script>
 </body>
 </html>

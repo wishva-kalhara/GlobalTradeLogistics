@@ -11,7 +11,7 @@ import jakarta.ws.rs.core.Response;
 import me.wishva.globalTradeLogistics.apiGateway.dto.UpdateCustomerProfileBody;
 import me.wishva.globalTradeLogistics.apiGateway.dto.UpdateSupplierProfileBody;
 import me.wishva.globalTradeLogistics.apiGateway.security.Secured;
-import me.wishva.globalTradeLogistics.core.dto.CustomerProfileSummary;
+import me.wishva.globalTradeLogistics.core.dto.ProfileSummary;
 import me.wishva.globalTradeLogistics.core.exception.UnauthorizedAccessException;
 import me.wishva.globalTradeLogistics.core.exception.UnknownPrincipalException;
 import me.wishva.globalTradeLogistics.core.local.IProfileService;
@@ -32,7 +32,7 @@ public class ProfileController {
     @GET
     @Path("/customer")
     @Produces(MediaType.APPLICATION_JSON)
-    public CustomerProfileSummary getCustomerProfile() throws UnauthorizedAccessException, UnknownPrincipalException {
+    public ProfileSummary getCustomerProfile() throws UnauthorizedAccessException, UnknownPrincipalException {
         return profileService.getCustomerProfile();
     }
 
@@ -42,6 +42,13 @@ public class ProfileController {
         profileService.updateCustomerProfile(
                 body.getFullName(), body.getMobile1(), body.getMobile2(), body.getAddress(), body.getCountry());
         return Response.noContent().build();
+    }
+
+    @GET
+    @Path("/supplier")
+    @Produces(MediaType.APPLICATION_JSON)
+    public ProfileSummary getSupplierProfile() throws UnauthorizedAccessException, UnknownPrincipalException {
+        return profileService.getSupplierProfile();
     }
 
     @PUT

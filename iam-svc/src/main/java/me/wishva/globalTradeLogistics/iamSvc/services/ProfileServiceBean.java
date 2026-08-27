@@ -4,7 +4,7 @@ import jakarta.ejb.Stateless;
 import jakarta.interceptor.Interceptors;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import me.wishva.globalTradeLogistics.core.dto.CustomerProfileSummary;
+import me.wishva.globalTradeLogistics.core.dto.ProfileSummary;
 import me.wishva.globalTradeLogistics.core.enums.Role;
 import me.wishva.globalTradeLogistics.core.exception.UnknownPrincipalException;
 import me.wishva.globalTradeLogistics.core.interceptor.RequiresRole;
@@ -31,7 +31,7 @@ public class ProfileServiceBean implements IProfileService {
 
     @Override
     @RequiresRole(Role.CUSTOMER)
-    public CustomerProfileSummary getCustomerProfile() throws UnknownPrincipalException {
+    public ProfileSummary getCustomerProfile() throws UnknownPrincipalException {
         String email = CurrentPrincipalHolder.get().getEmail();
         List<Customer> matches = em.createNamedQuery("Customer.findActiveByEmail", Customer.class)
                 .setParameter("email", email)
@@ -41,9 +41,26 @@ public class ProfileServiceBean implements IProfileService {
         }
 
         Customer customer = matches.get(0);
-        return new CustomerProfileSummary(
+        return new ProfileSummary(
                 customer.getEmail(), customer.getFullName(), customer.getMobile1(),
                 customer.getMobile2(), customer.getAddress(), customer.getCountry());
+    }
+
+    @Override
+    @RequiresRole(Role.VENDOR_REP)
+    public ProfileSummary getSupplierProfile() throws UnknownPrincipalException {
+        String email = CurrentPrincipalHolder.get().getEmail();
+        List<Supplier> matches = em.createNamedQuery("Supplier.findActiveByEmail", Supplier.class)
+                .setParameter("email", email)
+                .getResultList();
+        if (matches.isEmpty()) {
+            throw new UnknownPrincipalException("No active supplier found for " + email);
+        }
+
+        Supplier supplier = matches.get(0);
+        return new ProfileSummary(
+                supplier.getEmail(), supplier.getFullName(), supplier.getMobile1(),
+                supplier.getMobile2(), supplier.getAddress(), supplier.getCountry());
     }
 
     @Override
