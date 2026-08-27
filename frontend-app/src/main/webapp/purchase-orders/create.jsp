@@ -19,10 +19,11 @@
 
         <form id="po-form" class="mt-6 space-y-4">
             <div>
-                <label class="mb-1 block text-sm font-medium text-gray-700">Supplier ID</label>
-                <input type="number" id="supplierId" min="1" required
-                       class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30"/>
-                <p class="mt-1 text-xs text-gray-400">Ask the supplier for their account's supplier ID, or check their onboarding email.</p>
+                <label class="mb-1 block text-sm font-medium text-gray-700">Supplier</label>
+                <select id="supplierId" required
+                        class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30">
+                    <option value="">Select a supplier&hellip;</option>
+                </select>
             </div>
             <div>
                 <label class="mb-1 block text-sm font-medium text-gray-700">Product</label>
@@ -82,6 +83,33 @@
             });
         } catch (err) {
             showError("Could not load products: " + err.message);
+        }
+    })();
+
+    (async function loadSuppliers() {
+        try {
+            const res = await fetch("/api/v1/admin/suppliers", {
+                headers: { "Authorization": "Bearer " + session.token },
+            });
+            if (res.status === 401) {
+                localStorage.removeItem("gtl.app.session");
+                window.location.href = "/app/login.jsp";
+                return;
+            }
+            if (!res.ok) {
+                const data = await res.json().catch(function () { return {}; });
+                throw new Error(data.error || ("status " + res.status));
+            }
+            const suppliers = await res.json();
+            const select = document.getElementById("supplierId");
+            suppliers.forEach(function (s) {
+                const option = document.createElement("option");
+                option.value = s.supplierId;
+                option.textContent = s.fullName;
+                select.appendChild(option);
+            });
+        } catch (err) {
+            showError("Could not load suppliers: " + err.message);
         }
     })();
 

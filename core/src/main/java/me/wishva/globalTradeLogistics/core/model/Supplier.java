@@ -41,7 +41,10 @@ import lombok.Setter;
                 query = "SELECT s FROM Supplier s WHERE s.email = :email AND s.isActive = 'true'"),
         @NamedQuery(
                 name = "Supplier.countByEmail",
-                query = "SELECT COUNT(s) FROM Supplier s WHERE s.email = :email")
+                query = "SELECT COUNT(s) FROM Supplier s WHERE s.email = :email"),
+        @NamedQuery(
+                name = "Supplier.findAllActive",
+                query = "SELECT s FROM Supplier s WHERE s.isActive = 'true' ORDER BY s.fullName")
 })
 @Getter
 @Setter

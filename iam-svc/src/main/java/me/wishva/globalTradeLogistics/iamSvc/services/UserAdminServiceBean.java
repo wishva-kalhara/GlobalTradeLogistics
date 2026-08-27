@@ -5,6 +5,7 @@ import jakarta.interceptor.Interceptors;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import me.wishva.globalTradeLogistics.core.dto.EmailNotification;
+import me.wishva.globalTradeLogistics.core.dto.SupplierSummary;
 import me.wishva.globalTradeLogistics.core.dto.UserSummary;
 import me.wishva.globalTradeLogistics.core.enums.EmailType;
 import me.wishva.globalTradeLogistics.core.enums.Role;
@@ -89,6 +90,17 @@ public class UserAdminServiceBean implements IUserAdminService {
                 .getResultList()
                 .stream()
                 .map(u -> new UserSummary(u.getEmail(), u.getFullName(), u.getRole()))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @RequiresRole({Role.ADMIN, Role.COORDINATOR})
+    public List<SupplierSummary> listSuppliers() {
+        return em.createNamedQuery("Supplier.findAllActive", Supplier.class)
+                .getResultList()
+                .stream()
+                .filter(s -> s.getFullName() != null && !s.getFullName().isBlank())
+                .map(s -> new SupplierSummary(s.getSupplierId(), s.getFullName(), s.getEmail()))
                 .collect(Collectors.toList());
     }
 }

@@ -14,6 +14,7 @@ import me.wishva.globalTradeLogistics.apiGateway.dto.RegisterCustomerBody;
 import me.wishva.globalTradeLogistics.apiGateway.dto.RegisterSupplierBody;
 import me.wishva.globalTradeLogistics.apiGateway.security.Secured;
 import me.wishva.globalTradeLogistics.core.dto.SalesSummary;
+import me.wishva.globalTradeLogistics.core.dto.SupplierSummary;
 import me.wishva.globalTradeLogistics.core.dto.UserSummary;
 import me.wishva.globalTradeLogistics.core.enums.Role;
 import me.wishva.globalTradeLogistics.core.exception.UnauthorizedAccessException;
@@ -82,6 +83,13 @@ public class AdminController {
         userAdminService.registerCustomer(
                 body.getEmail(), body.getFullName(), body.getMobile1(), body.getAddress(), body.getCountry());
         return Response.status(Response.Status.CREATED).build();
+    }
+
+    @GET
+    @Path("/suppliers")
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<SupplierSummary> listSuppliers() throws UnauthorizedAccessException {
+        return userAdminService.listSuppliers();
     }
 
     @POST
