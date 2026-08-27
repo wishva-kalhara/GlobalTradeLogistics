@@ -26,9 +26,11 @@
                 </select>
             </div>
             <div>
-                <label class="mb-1 block text-sm font-medium text-gray-700">Warehouse ID</label>
-                <input type="number" id="warehouseId" min="1" value="1" required
-                       class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30"/>
+                <label class="mb-1 block text-sm font-medium text-gray-700">Warehouse</label>
+                <select id="warehouseId" required
+                        class="block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/30">
+                    <option value="">Select a warehouse&hellip;</option>
+                </select>
                 <p class="mt-1 text-xs text-gray-400">The warehouse you'd deliver this product to.</p>
             </div>
             <div>
@@ -67,6 +69,34 @@
         }
     })();
 
+    (async function loadWarehouses() {
+        try {
+            const res = await fetch("/api/v1/inventory/warehouses", {
+                headers: { "Authorization": "Bearer " + session.token },
+            });
+            if (res.status === 401) {
+                localStorage.removeItem("gtl.seller.session");
+                window.location.href = "/seller/auth/login.jsp";
+                return;
+            }
+            if (!res.ok) {
+                const data = await res.json().catch(function () { return {}; });
+                throw new Error(data.error || ("status " + res.status));
+            }
+            const warehouses = await res.json();
+            const select = document.getElementById("warehouseId");
+            warehouses.forEach(function (w) {
+                const option = document.createElement("option");
+                option.value = w.warehouseId;
+                option.textContent = "Warehouse " + w.warehouseId + " (" + w.country + ")";
+                select.appendChild(option);
+            });
+        } catch (err) {
+            errorEl.textContent = "Could not load warehouses: " + err.message;
+            errorEl.classList.remove("hidden");
+        }
+    })();
+
     document.getElementById("offering-form").addEventListener("submit", async function (e) {
         e.preventDefault();
         errorEl.classList.add("hidden");
@@ -99,7 +129,6 @@
             infoEl.textContent = "Product offering added.";
             infoEl.classList.remove("hidden");
             document.getElementById("offering-form").reset();
-            document.getElementById("warehouseId").value = 1;
         } catch (err) {
             errorEl.textContent = "Could not add product offering: " + err.message;
             errorEl.classList.remove("hidden");

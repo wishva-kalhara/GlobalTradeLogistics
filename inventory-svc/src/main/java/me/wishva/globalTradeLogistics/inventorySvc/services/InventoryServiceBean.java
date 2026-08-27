@@ -88,7 +88,7 @@ public class InventoryServiceBean implements IInventoryService {
     }
 
     @Override
-    @RequiresRole({Role.WAREHOUSE_MANAGER, Role.COORDINATOR, Role.ADMIN})
+    @RequiresRole({Role.WAREHOUSE_MANAGER, Role.COORDINATOR, Role.ADMIN, Role.VENDOR_REP})
     public List<WarehouseSummary> listWarehouses() {
         List<Warehouse> warehouses = em.createQuery("SELECT w FROM Warehouse w ORDER BY w.warehouseId", Warehouse.class)
                 .getResultList();

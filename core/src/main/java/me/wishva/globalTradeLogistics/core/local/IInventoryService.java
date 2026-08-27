@@ -30,6 +30,11 @@ public interface IInventoryService {
 
     List<InventorySummary> listByWarehouse(Integer warehouseId) throws UnauthorizedAccessException;
 
-    /** Warehouses to populate the inventory console's dropdown (same roles as {@link #listByWarehouse}). */
+    /**
+     * Warehouses to populate a warehouse-picking dropdown — the staff
+     * inventory console's ({@link #listByWarehouse}'s roles) plus
+     * {@code VENDOR_REP}, who picks a delivery warehouse when registering a
+     * product offering.
+     */
     List<WarehouseSummary> listWarehouses() throws UnauthorizedAccessException;
 }
