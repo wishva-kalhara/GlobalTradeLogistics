@@ -232,6 +232,7 @@ public class ShipmentServiceBean implements IShipmentService {
                 shipment.getShipmentType(),
                 shipment.getRef(),
                 shipment.getPurchaseOrdersPoId(),
-                latestCustomsRecord != null ? latestCustomsRecord.getStatus() : null);
+                latestCustomsRecord != null ? latestCustomsRecord.getStatus() : null,
+                latestCustomsRecord != null ? latestCustomsRecord.getDeclarationNumber() : null);
     }
 }

@@ -129,6 +129,7 @@
         document.getElementById("sh-warehouse").textContent = sh.warehouseId;
         document.getElementById("sh-poId").textContent = sh.poId ? ("#" + sh.poId) : "-";
         document.getElementById("sh-customs-status").textContent = sh.customsStatus || "-";
+        document.getElementById("declaration-number").value = sh.declarationNumber || "";
         document.getElementById("sh-ref").textContent = sh.ref || "-";
 
         const statusSelect = document.getElementById("new-status");
@@ -141,10 +142,14 @@
         document.getElementById("new-customs-status").value = sh.customsStatus || "PENDING";
 
         const customsEnabled = sh.status === "IN_TRANSIT";
-        document.getElementById("declaration-number").disabled = !customsEnabled;
-        document.getElementById("new-customs-status").disabled = !customsEnabled;
-        document.querySelector("#customs-form button[type='submit']").disabled = !customsEnabled;
-        document.querySelector("#customs-status-form button[type='submit']").disabled = !customsEnabled;
+        const hasDeclaration = !!sh.declarationNumber;
+        const isCleared = sh.customsStatus === "CLEARED";
+
+        document.getElementById("declaration-number").disabled = !customsEnabled || hasDeclaration;
+        document.querySelector("#customs-form button[type='submit']").disabled = !customsEnabled || hasDeclaration;
+
+        document.getElementById("new-customs-status").disabled = !customsEnabled || isCleared;
+        document.querySelector("#customs-status-form button[type='submit']").disabled = !customsEnabled || isCleared;
 
         document.getElementById("notify-carrier-btn").disabled = sh.customsStatus !== "CLEARED";
 

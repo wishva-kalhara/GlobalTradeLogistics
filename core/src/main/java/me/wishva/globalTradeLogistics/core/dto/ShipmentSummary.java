@@ -27,6 +27,8 @@ public class ShipmentSummary implements Serializable, Auditable {
     private Integer poId;
     /** Status of the most recent customs clearance record for this shipment, or {@code null} if none exists yet. */
     private CustomsClearanceStatus customsStatus;
+    /** Declaration number of the most recent customs clearance record, or {@code null} if none exists yet. */
+    private String declarationNumber;
 
     @Override
     @JsonbTransient
