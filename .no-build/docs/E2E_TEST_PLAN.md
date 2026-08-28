@@ -116,11 +116,11 @@ These apply across many test cases below; each TC references the relevant `CC-*`
 
 ## 5. `frontend-seller` Test Cases
 
-> **Known inconsistency (not a defect to "fix" during testing, just expected current behavior):** unlike the customer frontend (whose `index.jsp` is the product catalog itself) and the staff frontend (whose `index.jsp` is a role-based dashboard), the seller frontend's `index.jsp` is still an unbuilt placeholder — **both** login and signup redirect to `me/update-profile.jsp` every time (not just on first signup). Treat this as the current expected result, not a bug, when executing TC-SE04 below.
+`frontend-seller/index.jsp` is a role-based dashboard: a guest card with a "Log in" link, or — signed in — a welcome header, purchase-order stats/charts, and cards for "My Purchase Orders", "Create Shipment", "My Shipments", and "Add Product Offering" (the last two cards, and the profile-aware login redirect in TC-SE04, are new).
 
 ### TC-SE01 — Guest landing page
 - **Steps:** visit `/seller/index.jsp` while logged out.
-- **Expected:** placeholder landing page (no functional content yet — just confirm it loads without error).
+- **Expected:** guest card with a "Log in" link.
 
 ### TC-SE02 — Supplier self-signup
 - **Steps:** `/seller/auth/sign-up.jsp` → email + country → submit.
@@ -130,19 +130,33 @@ These apply across many test cases below; each TC references the relevant `CC-*`
 - **Steps:** repeat TC-SE02 with the same email.
 - **Expected:** 409-style error alert, same shape as TC-C03.
 
-### TC-SE04 — Returning seller OTP login
-- **Steps:** `/seller/auth/login.jsp` → OTP flow → verify.
-- **Expected:** redirects to `/seller/me/update-profile.jsp` (see the callout above — the customer frontend instead redirects returning logins to its product-catalog landing page, `/index.jsp`).
+### TC-SE04 — Returning seller OTP login (profile-aware redirect)
+- **Pre (a):** a VENDOR_REP whose profile has never been completed (fresh signup, no `fullName` saved).
+- **Steps (a):** `/seller/auth/login.jsp` → OTP flow → verify.
+- **Expected (a):** the page calls `GET /api/v1/me/supplier`; since `fullName` is empty, redirects to `/seller/me/update-profile.jsp`.
+- **Pre (b):** a VENDOR_REP with a completed profile (e.g. after TC-SE05).
+- **Steps (b):** repeat the login.
+- **Expected (b):** redirects straight to `/seller/index.jsp` (the dashboard) instead.
 
 ### TC-SE05 — Profile completion
 - **Steps:** `/seller/me/update-profile.jsp` → business/full name, mobile 1/2, address, country → save.
-- **Expected:** same shape as TC-C05 (country dropdown populated, success message, session persists).
+- **Expected:** same shape as TC-C05 (country dropdown populated using country **codes** as option values — matching the fix applied to the customer side — success message, session persists). Reloading the page pre-fills every field from `GET /api/v1/me/supplier`, including the country select.
 
 ### TC-SE06 — Add a product offering
 - **Pre:** signed in as VENDOR_REP.
-- **Steps:** Account menu → "Add Product Offering" (`/seller/products/add-offering.jsp`) → select a product, warehouse id (defaults to `1`), lead time in days → submit.
-- **Expected:** success message; form resets (warehouse id resets back to `1`).
-- **Validation:** submitting with lead time left blank/negative is rejected by the browser's `min="0"` constraint before it ever reaches the server.
+- **Steps:** Account menu → "Add Product Offering" (`/seller/products/add-offering.jsp`) → select a product, select a warehouse from the **Warehouse** dropdown (populated from `GET /api/v1/inventory/warehouses`, labeled "Warehouse {id} ({country})"), lead time in days → submit.
+- **Expected:** success message; form resets, including the warehouse dropdown back to "Select a warehouse…".
+
+### TC-SE10 — Create Shipment
+- **Pre:** signed in as VENDOR_REP, with at least one open PO placed against them with no shipment yet (see TC-A11).
+- **Steps:** Account menu (or dashboard card) → "Create Shipment" (`/seller/shipments/create.jsp`) → the **Purchase order** dropdown is populated from `GET /api/v1/purchase-orders/shippable` → select the PO, enter Tracking number / Vessel ID, pick a Type → "Create Shipment".
+- **Expected:** result card shows a new shipment id, the PO id, and status `CREATED`. Reloading the page — that PO no longer appears in the dropdown (it now has a shipment).
+- **Also verify:** if no POs are shippable, the empty state shows and the form is hidden.
+
+### TC-SE11 — My Shipments
+- **Pre:** at least one shipment created (TC-SE10).
+- **Steps:** Account menu → "My Shipments" (`/seller/shipments/list.jsp`).
+- **Expected:** a card per shipment — id, linked PO id, tracking/vessel/type, a color-coded status badge, and its customs status ("not yet filed" if none recorded). Updates made by staff (status changes, customs clearance) are visible here on reload without the supplier needing any staff-console access.
 
 ### TC-SE07 — My Purchase Orders (empty state)
 - **Pre:** a brand-new VENDOR_REP with no POs placed against them yet.
@@ -176,7 +190,7 @@ These apply across many test cases below; each TC references the relevant `CC-*`
 **Setup:** log in as `admin@globaltradelogistics.local`.
 
 #### TC-A03 — ADMIN dashboard
-- **Expected:** `/app/index.jsp` shows 3 cards: "Application User Management", "Vendor Performance Report", "Warehouse Inventory". Same 3 links appear in the nav's Account menu.
+- **Expected:** `/app/index.jsp` shows 3 cards: "Application User Management", "Warehouse Inventory", "Shipments" — the "Vendor Performance Report" **card** was intentionally removed from the dashboard, but the link still exists in the nav's Account menu (which lists 4 items: those 3 plus "Vendor Performance Report") — this asymmetry is intentional, not a bug. Below the cards, an "Analytics" section shows total sales/orders stat tiles and orders-by-status / top-products-by-revenue / vendor-on-time-rate charts (backed by `GET /admin/sales-summary` and `GET /admin/vendor-performance`).
 
 #### TC-A04 — Onboard a staff user (all 5 roles)
 - **Steps:** `/app/app-user-management.jsp` → "Onboard User" → fill email/full name → for each of ADMIN/WORKER/COORDINATOR/CUSTOMS_AGENT/WAREHOUSE_MANAGER, submit once.
@@ -198,20 +212,21 @@ These apply across many test cases below; each TC references the relevant `CC-*`
 - **Expected under default dev config:** empty state ("No vendor performance reports yet") — this report is only populated once the weekly recompute timer has run *and* the app is deployed with `IS_PROD=true` (monitoring-svc's consumer isn't active otherwise). An empty result here is correct, not a bug.
 
 #### TC-A09 — Warehouse Inventory (as ADMIN)
-- **Steps:** open "Warehouse Inventory", leave warehouse id at `1`, "Load".
-- **Expected:** table of all 5 seeded products with qty/reorder level/unit price/last-updated; any row where qty < reorder level is highlighted and qty shows "(low)". Try a nonexistent warehouse id (e.g. `999`) → expect the empty state.
+- **Steps:** open "Warehouse Inventory" — the **Warehouse** field is a dropdown (populated from `GET /inventory/warehouses`, labeled "Warehouse {id} ({country})"), not a numeric input — it auto-loads that warehouse's stock as soon as the page loads (no separate "Load" button).
+- **Expected:** table of all 5 seeded products with qty/reorder level/unit price/last-updated; any row where qty < reorder level is highlighted and qty shows "(low)". (With only one seeded warehouse, there's nothing to switch to for the empty-state check — the dropdown itself would need a second warehouse to exist.)
 
 ### 6.3 — COORDINATOR
 
 **Setup:** log in as the COORDINATOR account from TC-A04.
 
 #### TC-A10 — COORDINATOR dashboard
-- **Expected:** cards for "Create Purchase Order", "Vendor Performance Report", "Warehouse Inventory" (no "Application User Management").
+- **Expected:** cards for "Create Purchase Order", "Warehouse Inventory", "Shipments" (no "Application User Management"; "Vendor Performance Report" is nav-only, per TC-A03's note), plus the same Analytics section as ADMIN.
 
 #### TC-A11 — Create a purchase order
-- **Pre:** know a valid supplier id (e.g. from a seller signup — check via `psql` if needed, or just use `1` if it's the first supplier registered).
-- **Steps:** `/app/purchase-orders/create.jsp` → supplier id, pick a product, quantity → "Create Purchase Order".
-- **Expected:** result card appears with PO id, product name, quantity, and a computed total price; form resets. Hand the PO id to a WAREHOUSE_MANAGER for TC-A13.
+- **Pre:** a supplier with a completed profile who has registered at least one product offering (TC-SE06) for the product you'll pick.
+- **Steps:** `/app/purchase-orders/create.jsp` → pick a **Product** first (the Supplier dropdown starts disabled, showing "Select a product first…") → the Supplier dropdown then loads from `GET /admin/suppliers?productId={id}` and enables, listing only suppliers who've registered an offering for that product → pick one → enter Quantity → "Create Purchase Order".
+- **Expected:** result card appears with PO id, product name, quantity, and a computed total price; form resets (Supplier dropdown returns to its disabled "Select a product first…" state). Hand the PO id to the supplier for TC-SE10.
+- **Also verify:** picking a product no supplier has registered an offering for shows the hint "No supplier has registered an offering for this product yet." and leaves the Supplier dropdown showing "No suppliers for this product".
 
 #### TC-A12 — Access denied for other roles' pages
 - **Steps:** while logged in as COORDINATOR, navigate directly to `/app/purchase-orders/record-grn.jsp` and `/app/shipments/manage.jsp`.
@@ -222,30 +237,45 @@ These apply across many test cases below; each TC references the relevant `CC-*`
 **Setup:** log in as the WAREHOUSE_MANAGER account from TC-A04.
 
 #### TC-A13 — Record a GRN
-- **Pre:** an open PO id from TC-A11.
-- **Steps:** `/app/purchase-orders/record-grn.jsp` → PO id, quantity received (matching or less than the PO's requested qty) → "Record GRN".
-- **Expected:** result card shows the PO marked "Completed"; cross-check `/app/inventory.jsp` afterward — the received product's qty increased by the recorded amount.
+- **Pre:** a shipment that's `DELIVERED` **and** whose customs status is `CLEARED` — i.e. the full ship → customs → GRN pipeline from [`E2E_TEST_FLOW.md`](./E2E_TEST_FLOW.md) has reached that point for a PO from TC-A11.
+- **Steps:** `/app/purchase-orders/record-grn.jsp` → the **Delivered shipment** dropdown is populated from `GET /shipments/awaiting-grn` (shows "Shipment #{id} (PO #{poId}, {trackingNumber})") — pick it, enter quantity received (matching or less than the PO's requested qty) → "Record GRN".
+- **Expected:** result card shows the PO marked "Completed". Cross-check: `/app/inventory.jsp` — the received product's qty increased by the recorded amount; the shipment no longer appears in this page's dropdown (its option is removed on success, and its PO is now complete so `awaiting-grn` won't return it again — this is what makes a duplicate GRN impossible from the UI).
+- **If the dropdown is empty** ("No delivered shipments are awaiting a GRN right now"): that's correct if no shipment has reached `DELIVERED` yet — see TC-A16 for advancing one there. Selecting one that's `DELIVERED` but not yet customs-`CLEARED` and submitting shows an error ("Customs clearance must be completed (CLEARED)...") rather than succeeding.
 
 #### TC-A14 — WAREHOUSE_MANAGER dashboard and page access
-- **Expected:** dashboard shows "Record GRN" and "Warehouse Inventory" only. Direct navigation to `/app/purchase-orders/create.jsp` and `/app/shipments/manage.jsp` → access-denied.
+- **Expected:** dashboard shows "Record GRN", "Warehouse Inventory", and "Shipments" (read-only list). Direct navigation to `/app/purchase-orders/create.jsp` and `/app/shipments/manage.jsp` → access-denied.
+
+#### TC-A14b — Shipments (read-only, staff-wide)
+- **Pre:** signed in as ADMIN, COORDINATOR, WAREHOUSE_MANAGER, or CUSTOMS_AGENT.
+- **Steps:** open "Shipments" (`/app/shipments/list.jsp`).
+- **Expected:** a table of every shipment (`GET /shipments`), most recent first — shipment id, linked PO id, tracking number, a color-coded status badge (including green for `COMPLETED`), and customs status. Gives non-CUSTOMS_AGENT roles visibility into shipments without needing lookup-by-id access to `/app/shipments/manage.jsp`.
 
 ### 6.5 — CUSTOMS_AGENT
 
 **Setup:** log in as the CUSTOMS_AGENT account from TC-A04.
 
 #### TC-A15 — CUSTOMS_AGENT dashboard
-- **Expected:** only "Manage Shipments" card/link.
+- **Expected:** two cards/links: "Manage Shipments" (interactive) and "All Shipments" (read-only list, same page as TC-A14b).
 
-#### TC-A16 — Shipment lookup and status update
-- **Steps:** `/app/shipments/manage.jsp` → enter shipment id `1` → "Load" → change status dropdown (e.g. to `DELAYED`) → "Update".
-- **Expected:** shipment card populates with tracking number, vessel, type, warehouse, and current status; after update, the status badge changes and a success message shows.
+#### TC-A16 — Shipment lookup and status update, with state-gated controls
+- **Steps:** `/app/shipments/manage.jsp` → the **Shipment** field is a dropdown (populated from `GET /shipments`, labeled "Shipment #{id} — {trackingNumber} ({status})") — selecting one auto-loads it (no separate "Load" button).
+- **Expected on load:** shipment card populates with tracking number, vessel, type, warehouse, linked PO id, customs status, and carrier ref.
+- **Status dropdown gating:** if the loaded shipment's status is `CREATED`, the "New status" dropdown offers **only** `IN_TRANSIT` — no other option. For any other status, it offers `IN_TRANSIT`/`DELIVERED`/`DELAYED` (never back to `CREATED`).
+- **Customs section gating:** the "Declaration number" input, "Create Record" button, "Update customs status" select, and its "Update" button are all **disabled** unless the shipment's status is currently `IN_TRANSIT`.
+- **Steps:** select `IN_TRANSIT` → "Update".
+- **Expected:** status badge changes to `IN_TRANSIT`, success message shows, and the customs-section controls become enabled, and the dropdown's own label for this shipment updates to reflect the new status.
 
-#### TC-A17 — Create a customs clearance record
-- **Steps:** with shipment `1` loaded, enter a declaration number → "Create Record".
-- **Expected:** success message; form resets.
+#### TC-A17 — Create and clear a customs record (with lock-in behavior)
+- **Pre:** shipment status is `IN_TRANSIT` (TC-A16).
+- **Steps:** enter a declaration number → "Create Record".
+- **Expected:** success message; the shipment reloads and now shows customs status `PENDING`. The "Declaration number" input now shows that value **prefilled**, and — along with "Create Record" — is now **disabled**: once a declaration number is set, it can't be re-entered or replaced through this form.
+- **Steps:** "Update customs status" → select `CLEARED` → "Update".
+- **Expected:** success message; customs status shows `CLEARED`. The "Update customs status" select and its "Update" button are now **disabled** — once `CLEARED`, it can't be reverted through this form. The "Notify Carrier" button (previously disabled) becomes enabled.
+- **Also verify:** attempting a GRN for this shipment before doing this (`/app/purchase-orders/record-grn.jsp`) fails with a "Customs clearance must be completed (CLEARED)..." error even while the shipment shows as `DELIVERED`.
 
 #### TC-A18 — Notify carrier system
-- **Steps:** with shipment `1` loaded, click "Notify Carrier".
+- **Pre:** customs status is `CLEARED` (TC-A17) — the button is disabled otherwise.
+- **Steps:** click "Notify Carrier".
 - **Expected:** success message including a carrier reference (`CARRIER-<uuid>` shape); the "Carrier ref" field on the shipment card updates to that value.
 
 #### TC-A19 — Access denied for other roles' pages
@@ -274,12 +304,15 @@ These apply across many test cases below; each TC references the relevant `CC-*`
 
 These exercise a full business flow across multiple roles/frontends in sequence — run them in order.
 
-### TC-X01 — Full procurement chain
+### TC-X01 — Full procurement chain (create PO → ship → customs → GRN)
+This is the flow [`E2E_TEST_FLOW.md`](./E2E_TEST_FLOW.md) walks through in full detail, with exact field values and 29 numbered test points — run that document for a rigorous pass. Summarized here for the traceability matrix:
 1. As a VENDOR_REP (seller frontend), add a product offering for one of the 5 catalog products (TC-SE06).
 2. As a COORDINATOR (staff console), create a PO against that supplier for the same product (TC-A11). Note the PO id and the product's current inventory qty (check via ADMIN/COORDINATOR's Warehouse Inventory page first).
-3. As a WAREHOUSE_MANAGER, record a GRN for that PO (TC-A13).
-4. Back as the VENDOR_REP, reload "My Purchase Orders" (TC-SE08) — confirm it now shows "Completed".
-5. As ADMIN/COORDINATOR, reload Warehouse Inventory — confirm the product's qty increased by the GRN quantity.
+3. Back as the VENDOR_REP, create a shipment for that PO (TC-SE10).
+4. As a CUSTOMS_AGENT, advance the shipment `CREATED → IN_TRANSIT`, create and clear its customs record, then advance it to `DELIVERED` (TC-A16/A17).
+5. As a WAREHOUSE_MANAGER, record a GRN for that shipment (TC-A13) — only possible now that it's `DELIVERED` + `CLEARED`.
+6. Back as the VENDOR_REP, reload "My Purchase Orders" (TC-SE08) — confirm it now shows "Completed" — and "My Shipments" (TC-SE11) — confirm the shipment shows `COMPLETED`.
+7. As ADMIN/COORDINATOR, reload Warehouse Inventory — confirm the product's qty increased by the GRN quantity.
 
 ### TC-X02 — Full customer order chain
 1. As a CUSTOMER, note a product's current stock on `/index.jsp`.
@@ -287,12 +320,17 @@ These exercise a full business flow across multiple roles/frontends in sequence 
 3. Reload `/index.jsp` — confirm the displayed stock decreased by the ordered quantity.
 4. Check `/orders.jsp` — the new order appears with status `PLACED`.
 5. As ADMIN/COORDINATOR, check Warehouse Inventory for the same product — confirm the same qty decrease is reflected there too (same underlying `inventory` table).
+6. As ADMIN/COORDINATOR, reload the dashboard — confirm the Analytics section's total sales/orders-by-status reflect this new order (this is the customer-`orders`-table analytics; it's unaffected by the PO/GRN chain in TC-X01, which is a separate `purchase_orders` table).
 
-### TC-X03 — Shipment lifecycle
-1. As a CUSTOMS_AGENT, load shipment `1` (initially `IN_TRANSIT`).
-2. Update its status to `DELAYED`, then create a customs record, then notify the carrier (TC-A16–A18 in sequence).
-3. Reload the shipment lookup — confirm the status and carrier ref both persisted.
-4. *(Backend-only, not directly UI-testable)*: a 15-minute declarative timer also polls `IN_TRANSIT` shipments and may flip status to `DELIVERED` on its own — if this test is left running long enough, a re-load of the same shipment could show a status change with no user action. Not something to actively wait for during a manual pass; just don't be surprised if the demo shipment's status has changed between test sessions.
+### TC-X03 — Shipment lifecycle and state-machine gating
+1. As a CUSTOMS_AGENT, load the one legacy seeded shipment (id `1`, initially `IN_TRANSIT`, pre-dates the ship→customs→GRN link so it has no PO).
+2. Update its status to `DELAYED`, then back to `IN_TRANSIT` (both valid from a non-`CREATED` state) — confirm the dropdown never offers `CREATED` as a target.
+3. With it `IN_TRANSIT`, create a customs record with a declaration number — confirm the input then shows that value and is disabled (can't be edited/replaced).
+4. Advance customs status to `CLEARED` — confirm the customs-status select and its Update button become disabled, and "Notify Carrier" (previously disabled) becomes enabled.
+5. Click "Notify Carrier" — confirm success and a carrier reference is stored.
+6. Reload the shipment lookup — confirm status, customs status, declaration number, and carrier ref all persisted, and the same controls are still disabled per steps 3–4.
+7. **Negative check**: pick a *different*, freshly-created (`CREATED`-status) shipment (from TC-SE10) — confirm its status dropdown offers only `IN_TRANSIT`, and its customs-section controls are all disabled until you advance it there.
+8. *(Backend-only, not directly UI-testable)*: a 15-minute declarative timer also polls `IN_TRANSIT` shipments and may flip status to `DELIVERED` on its own — don't be surprised if a shipment's status has changed between test sessions with no user action.
 
 ---
 
@@ -319,31 +357,34 @@ These exercise a full business flow across multiple roles/frontends in sequence 
 | TC-C11 | nav include | — | CUSTOMER |
 | TC-SE01 | `/seller/index.jsp` | — | none |
 | TC-SE02/03 | `/seller/auth/sign-up.jsp` | `POST /auth/signup/supplier` | none |
-| TC-SE04 | `/seller/auth/login.jsp` | `POST /auth/otp/request`, `/verify` | none → VENDOR_REP |
-| TC-SE05 | `/seller/me/update-profile.jsp` | `GET /countries`, `PUT /me/supplier` | VENDOR_REP |
-| TC-SE06 | `/seller/products/add-offering.jsp` | `GET /products`, `POST /suppliers/me/products` | VENDOR_REP |
+| TC-SE04 | `/seller/auth/login.jsp` | `POST /auth/otp/request`, `/verify`, `GET /me/supplier` | none → VENDOR_REP |
+| TC-SE05 | `/seller/me/update-profile.jsp` | `GET /countries`, `GET /me/supplier`, `PUT /me/supplier` | VENDOR_REP |
+| TC-SE06 | `/seller/products/add-offering.jsp` | `GET /products`, `GET /inventory/warehouses`, `POST /suppliers/me/products` | VENDOR_REP |
 | TC-SE07/08 | `/seller/purchase-orders.jsp` | `GET /purchase-orders` | VENDOR_REP |
 | TC-SE09 | nav include | — | VENDOR_REP |
+| TC-SE10 | `/seller/shipments/create.jsp` | `GET /purchase-orders/shippable`, `POST /purchase-orders/{poId}/shipment` | VENDOR_REP |
+| TC-SE11 | `/seller/shipments/list.jsp` | `GET /shipments/mine` | VENDOR_REP |
 | TC-A01/02 | `/app/index.jsp`, `/app/login.jsp` | `POST /auth/otp/request`, `/verify` | none |
-| TC-A03 | `/app/index.jsp` | — | ADMIN |
+| TC-A03 | `/app/index.jsp` | `GET /admin/sales-summary`, `GET /admin/vendor-performance` | ADMIN |
 | TC-A04 | `/app/app-user-management.jsp` | `GET /admin/users`, `POST /admin/users` | ADMIN |
 | TC-A05 | `/app/app-user-management.jsp` | `POST /admin/customers` | ADMIN |
 | TC-A06 | `/app/app-user-management.jsp` | `POST /admin/suppliers` | ADMIN |
 | TC-A07 | `/app/app-user-management.jsp` | `GET /admin/users` | ADMIN |
 | TC-A08 | `/app/vendor-performance.jsp` | `GET /admin/vendor-performance` | ADMIN, COORDINATOR |
-| TC-A09 | `/app/inventory.jsp` | `GET /inventory/{warehouseId}` | ADMIN, COORDINATOR, WAREHOUSE_MANAGER |
-| TC-A10/12 | `/app/index.jsp`, other `/app/*` pages | — | COORDINATOR |
-| TC-A11 | `/app/purchase-orders/create.jsp` | `GET /products`, `POST /purchase-orders` | COORDINATOR |
-| TC-A13/14 | `/app/purchase-orders/record-grn.jsp` | `POST /purchase-orders/{id}/grn` | WAREHOUSE_MANAGER |
+| TC-A09 | `/app/inventory.jsp` | `GET /inventory/warehouses`, `GET /inventory/{warehouseId}` | ADMIN, COORDINATOR, WAREHOUSE_MANAGER |
+| TC-A10/12 | `/app/index.jsp`, other `/app/*` pages | `GET /admin/sales-summary`, `GET /admin/vendor-performance` | COORDINATOR |
+| TC-A11 | `/app/purchase-orders/create.jsp` | `GET /products`, `GET /admin/suppliers?productId=`, `POST /purchase-orders` | COORDINATOR |
+| TC-A13 | `/app/purchase-orders/record-grn.jsp` | `GET /shipments/awaiting-grn`, `POST /shipments/{id}/grn` | WAREHOUSE_MANAGER |
+| TC-A14/A14b | `/app/index.jsp`, `/app/shipments/list.jsp` | `GET /shipments` | WAREHOUSE_MANAGER (A14b: also ADMIN, COORDINATOR, CUSTOMS_AGENT) |
 | TC-A15 | `/app/index.jsp` | — | CUSTOMS_AGENT |
-| TC-A16 | `/app/shipments/manage.jsp` | `GET /shipments/{id}`, `PUT /shipments/{id}/status` | CUSTOMS_AGENT |
-| TC-A17 | `/app/shipments/manage.jsp` | `POST /shipments/{id}/customs` | CUSTOMS_AGENT |
+| TC-A16 | `/app/shipments/manage.jsp` | `GET /shipments`, `GET /shipments/{id}`, `PUT /shipments/{id}/status` | CUSTOMS_AGENT |
+| TC-A17 | `/app/shipments/manage.jsp` | `POST /shipments/{id}/customs`, `PUT /shipments/{id}/customs/status` | CUSTOMS_AGENT |
 | TC-A18 | `/app/shipments/manage.jsp` | `POST /shipments/{id}/notify-carrier` | CUSTOMS_AGENT |
 | TC-A19 | various `/app/*` | — | CUSTOMS_AGENT |
 | TC-A20 | `/app/index.jsp` | — | WORKER |
 | TC-A21 | devtools console | any role-gated endpoint | any |
-| TC-X01 | seller + staff pages above | `POST /suppliers/me/products`, `POST /purchase-orders`, `POST /purchase-orders/{id}/grn`, `GET /purchase-orders`, `GET /inventory/{id}` | VENDOR_REP, COORDINATOR, WAREHOUSE_MANAGER |
-| TC-X02 | `/index.jsp`, `/orders.jsp`, `/app/inventory.jsp` | `POST /orders`, `GET /orders`, `GET /products`, `GET /inventory/{id}` | CUSTOMER, (ADMIN/COORDINATOR to verify) |
-| TC-X03 | `/app/shipments/manage.jsp` | all 4 shipment endpoints | CUSTOMS_AGENT |
+| TC-X01 | seller + staff pages above | `POST /suppliers/me/products`, `POST /purchase-orders`, `GET /purchase-orders/shippable`, `POST /purchase-orders/{id}/shipment`, `PUT /shipments/{id}/status`, `POST /shipments/{id}/customs`, `PUT /shipments/{id}/customs/status`, `POST /shipments/{id}/grn`, `GET /purchase-orders`, `GET /shipments/mine`, `GET /inventory/{id}` | VENDOR_REP, COORDINATOR, CUSTOMS_AGENT, WAREHOUSE_MANAGER |
+| TC-X02 | `/index.jsp`, `/orders.jsp`, `/app/inventory.jsp`, `/app/index.jsp` | `POST /orders`, `GET /orders`, `GET /products`, `GET /inventory/{id}`, `GET /admin/sales-summary` | CUSTOMER, (ADMIN/COORDINATOR to verify) |
+| TC-X03 | `/app/shipments/manage.jsp` | `GET /shipments`, `GET /shipments/{id}`, `PUT /shipments/{id}/status`, `POST /shipments/{id}/customs`, `PUT /shipments/{id}/customs/status`, `POST /shipments/{id}/notify-carrier` | CUSTOMS_AGENT |
 
 **Endpoint not covered by any TC (intentionally):** `GET /orders/{orderId}` — no dedicated detail page exists because `orders.jsp`'s list already renders every order's full line-item detail inline; a drill-down page would show nothing new.

@@ -60,16 +60,26 @@ Same shape as above, for suppliers.
 
 ## 3. Profile 🔒
 
-Both endpoints resolve **which row to update from the caller's JWT** (`sub` claim) — there is no client-supplied id, so a principal can only ever edit their own row.
+All four endpoints resolve **which row to read/update from the caller's JWT** (`sub` claim) — there is no client-supplied id, so a principal can only ever see/edit their own row.
+
+### `GET /me/customer` 🔒 *(role: `CUSTOMER`)*
+Pre-fills `me/update-profile.jsp`.
+
+- **200**: `ProfileSummary` — `{ "email": "string", "fullName": "string|null", "mobile1": "string|null", "mobile2": "string|null", "address": "string|null", "country": "string|null" }`. Fields are `null` until the profile's been completed at least once.
+- **403**: caller isn't a `CUSTOMER`.
+- **404**: JWT's email doesn't resolve to an active customer (`UnknownPrincipalException`).
 
 ### `PUT /me/customer` 🔒 *(role: `CUSTOMER`)*
-- **Body**: `{ "fullName": "string", "mobile1": "string", "mobile2": "string", "address": "string", "country": "string" }`
+- **Body**: `{ "fullName": "string", "mobile1": "string", "mobile2": "string", "address": "string", "country": "string" }` — `country` is a country **code** (matches `GET /countries`' `code` field, not `name`).
 - **204**: profile updated, no body.
 - **403**: caller isn't a `CUSTOMER`.
 - **404**: JWT's email doesn't resolve to an active customer (`UnknownPrincipalException`).
 
+### `GET /me/supplier` 🔒 *(role: `VENDOR_REP`)*
+Same shape as `GET /me/customer`, for the `suppliers` table. Used both to pre-fill `frontend-seller/me/update-profile.jsp` and by `auth/login.jsp` to decide whether a returning supplier's profile is complete (non-blank `fullName`) — if so, it redirects straight to the dashboard instead of the profile-completion page.
+
 ### `PUT /me/supplier` 🔒 *(role: `VENDOR_REP`)*
-- Same body shape and status codes as above, for the `suppliers` table.
+- Same body shape and status codes as `PUT /me/customer`, for the `suppliers` table.
 
 ---
 
@@ -109,6 +119,20 @@ Same as above, for suppliers.
 
 - **Body**: `{ "email": "string", "fullName": "string", "mobile1": "string", "address": "string", "country": "string" }` — all five fields required.
 - **201** / **400** / **403**: same shape as `/admin/customers`.
+
+### `GET /admin/suppliers` 🔒 *(roles: `ADMIN`, `COORDINATOR`)*
+Suppliers to populate a supplier-picking dropdown — used by `POST /purchase-orders`'s create-PO page.
+
+- **Query param**: `productId` (optional, integer).
+- **200** (no `productId`): `[SupplierSummary, ...]` — every active supplier with a **completed profile** (non-blank `fullName`). A supplier who's only ever self-signed-up is deliberately excluded — showing a bare email in place of a business name would read as a generic account, not a real seller.
+- **200** (with `productId`): same shape, further filtered to only suppliers who've registered a product offering (`POST /suppliers/me/products`) for that product — i.e. "who can actually fulfill this."
+- **403**: caller isn't `ADMIN`/`COORDINATOR`.
+
+### `GET /admin/sales-summary` 🔒 *(roles: `ADMIN`, `COORDINATOR`)*
+Store-wide sales aggregate for the staff dashboard's Analytics section — aggregates the `orders`/`order_items` tables (customer orders), unrelated to `purchase_orders`.
+
+- **200**: `SalesSummary` — `{ "totalSales": 1234.5, "totalOrders": 12, "ordersByStatus": {"PLACED": 10, ...}, "topProducts": [{ "productId": 1, "productName": "string", "qtySold": 20, "revenue": 250.0 }, ...] }` — `topProducts` is the top 5 by revenue.
+- **403**: caller isn't `ADMIN`/`COORDINATOR`.
 
 ---
 
@@ -181,6 +205,12 @@ Register which products a supplier can provide, from which warehouse, and their 
 ---
 
 ## 8. Inventory 🔒
+
+### `GET /inventory/warehouses` 🔒 *(roles: `ADMIN`, `COORDINATOR`, `WAREHOUSE_MANAGER`, `VENDOR_REP`)*
+Warehouses to populate a warehouse-picking dropdown — the staff inventory console's, plus `VENDOR_REP` for picking a delivery warehouse when registering a product offering.
+
+- **200**: `[{ "warehouseId": 1, "country": "string" }, ...]` — this deployment seeds exactly one (`id 1`, `US`).
+- **403**: caller's role isn't one of the four above.
 
 ### `GET /inventory/{warehouseId}` 🔒 *(roles: `ADMIN`, `COORDINATOR`, `WAREHOUSE_MANAGER`)*
 - **200**: `[{ "inventoryId": 1, "warehouseId": 1, "productId": 1, "productName": "string", "qty": 500, "reorderLevel": 20, "unitPrice": 12.5, "lastUpdatedAt": "..." }, ...]`
