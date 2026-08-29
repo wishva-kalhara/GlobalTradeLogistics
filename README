@@ -1,0 +1,289 @@
+# GlobalTrade Logistics
+
+## 1. Introduction
+
+GlobalTrade Logistics is a Jakarta EE 10 enterprise application that runs a complete global supply-chain loop: customer catalog and order placement, coordinator-driven procurement, vendor shipment, customs clearance, goods-received (GRN) stock receipt, and warehouse inventory. The system is packaged as a single EAR on GlassFish 7, with domain-aligned EJB modules, three role-specific JSP frontends, a JAX-RS API gateway, Hibernate/JTA persistence against MySQL, and asynchronous JMS for email, audit, and operational tracing.
+
+The design treats a legacy SCM schema as given, layers additive identity and workflow tables on top of it, and uses container-managed timers, interceptors, and transactions to keep procurement, logistics, and inventory consistent without an external orchestrator.
+
+---
+
+## 2. Architecture documentation
+
+### 2.1 System Architecture with Component Relationship Analysis
+
+The application is a **modular monolith**: one JVM, one JTA persistence unit (`globalTradeLogisticsPU`), one GlassFish domain, and one EAR (`glolabl-trade-logistics.ear`). Modules are split by supply-chain concern so each EJB archive has a narrow contract, while `core` (bundled in the EAR `lib/` directory) is the shared classloader for entities, DTOs, interceptors, JWT, JMS publishers, and `AppConfig`. That shared library is essential: `CurrentPrincipalHolder` is a `ThreadLocal`, and it only works if the gateway WAR and every EJB module load the *same* class.
+
+HTTP traffic enters through four WARs. `frontend-customer` (`/`) is the public shop; `frontend-seller` (`/seller`) is the vendor portal; `frontend-app` (`/app`) is the staff console; `api-gateway` (`/api`) is the JAX-RS façade. Frontends call `/api/v1/...` with a Bearer JWT. The gateway never owns business rules: it validates tokens, maps HTTP to local EJB calls, and turns exceptions into `{"error": "..."}` JSON.
+
+EJB modules bind as follows:
+
+| Module | Role in the chain |
+|---|---|
+| **iam-svc** | OTP login, JWT issuance, customer/supplier self-signup, staff onboarding, profile completion. `IUsersService` is `@Remote`; other IAM contracts are `@Local`. |
+| **order-svc** | Customer orders: stock check and decrement in the same CMT as the order write, then an `ORDER_CONFIRMATION` notification. |
+| **inventory-svc** | Warehouse stock reads/adjusts and a programmatic reorder timer. |
+| **procurement-svc** | Purchase orders, GRN (which completes the PO and raises stock), vendor performance scoring. |
+| **logistics-svc** | Shipments, customs records, simulated carrier notify (BMT), in-transit poll and customs-deadline timers. |
+| **monitoring-svc** | JMS consumers that persist `AuditEvent`s, print `LogEvent` traces, and (historically) record idempotency keys. |
+| **notification-svc** | JMS consumer that renders HTML email and sends it over SMTP when `IS_PROD=true`. |
+
+Side effects leave the request thread via three OpenMQ topics created at domain start: notification email, audit log, and live trace. Publishers in `core` look those destinations up by JNDI; MDBs in monitoring-svc and notification-svc consume them. Hibernate talks to MySQL through the JTA datasource `jdbc/globalTradeLogisticsDS`.
+
+The procurement-to-fulfillment pipeline is the binding that actually spans modules: **COORDINATOR** creates a PO (`procurement-svc`) → **VENDOR_REP** creates a shipment (`logistics-svc`) → **CUSTOMS_AGENT** moves status and customs (`logistics-svc`) → **WAREHOUSE_MANAGER** records GRN (`procurement-svc` + inventory write). Customer sales (`order-svc`) share the same `inventory` rows, so a GRN and a retail order are isolated only by the JTA transaction that owns each write.
+
+```mermaid
+flowchart TB
+    subgraph clients [Clients]
+        FC[frontend-customer /]
+        FS[frontend-seller /seller]
+        FA[frontend-app /app]
+    end
+
+    GW[api-gateway /api<br/>JwtAuthFilter + ExceptionMappers]
+
+    subgraph ear [EAR — GlassFish 7]
+        CORE[core lib<br/>entities, interceptors, AppConfig, publishers]
+        IAM[iam-svc]
+        ORD[order-svc]
+        INV[inventory-svc]
+        PROC[procurement-svc]
+        LOGS[logistics-svc]
+        MON[monitoring-svc]
+        NOT[notification-svc]
+    end
+
+    JMS[OpenMQ Topics<br/>email / audit / trace]
+    DB[(MySQL 8<br/>global_trade_log_corp)]
+    SMTP[SMTP]
+
+    FC --> GW
+    FS --> GW
+    FA --> GW
+    GW --> IAM & ORD & INV & PROC & LOGS
+    IAM & ORD & INV & PROC & LOGS --> CORE
+    CORE --> DB
+    CORE --> JMS
+    JMS --> MON
+    JMS --> NOT
+    MON --> DB
+    NOT --> SMTP
+```
+
+### 2.2 Implementation Specification with Optimization techniques
+
+**Runtime.** JDK 11, Jakarta EE 10 (`jakarta.jakartaee-api` 10.0.0, provided by GlassFish 7.0.21), Maven 3.9.x, MySQL 8, Connector/J 8.4.0. Persistence is **Hibernate 6.4.4.Final** rather than GlassFish’s bundled EclipseLink, with `SunOneJtaPlatform` so Hibernate joins GlassFish JTA. Lombok 1.18.32 generates entity accessors; JDK 25 is known to break that annotation processing.
+
+**Packaging optimizations.** Business services are `@Local` EJB interfaces (pass-by-reference, no serialization) except `IUsersService` (`@Remote`) as a teaching contrast. Stateless session beans are the default for request work; timers are `@Singleton` so a job is one instance per JVM. The JDBC pool is sized `steadypoolsize=2` / `maxpoolsize=32` / `maxwait=10000` ms for a single-instance MySQL. Hibernate `hbm2ddl.auto=update` is additive only: the 15 legacy SCM tables come from `.no-build/db/schema.sql`; `users`, `otp_codes`, and extra columns are owned by entities.
+
+**Persistence and messaging optimizations.** Named JPQL queries (`Inventory.findByProductOrderByQtyDesc`, `Shipment.findByStatus`, `PurchaseOrder.findOpen`, …) avoid ad-hoc query compilation on hot paths. Order placement picks the warehouse with the highest stock for a product (`setMaxResults(1)`) rather than scanning every warehouse in Java. Email, audit, and TRACE are **asynchronous**: the HTTP/EJB transaction publishes a JMS `ObjectMessage` and returns; SMTP and `audit_records` inserts happen on MDB threads so a slow mailbox never holds a DB connection. `CarrierGatewayBean` uses **bean-managed transactions** so the simulated carrier I/O runs with *no* transaction open. Trace forwarding is never gated by `IS_PROD` (you need it in production incidents); email and durable audit publishes *are* gated so local runs do not require SMTP or a live consumer.
+
+**Database design.** The MySQL schema is a classic SCM star around products: `customers` / `orders` / `order_items` for retail; `suppliers` / `purchase_orders` / `grns` / `supplier_providing_products` for inbound; `wearhouses` (legacy spelling) / `inventory` for stock; `shipments` / `custom_clearence_records` for freight. Foreign keys use `ON DELETE NO ACTION`. Status fields are `VARCHAR` plus JPA `@Enumerated(STRING)` — no native MySQL ENUMs — so Connector/J needs no special type mapping. Additive Hibernate tables hold staff `users` (no password column; OTP-only) and hashed `otp_codes`. `audit_records` is a narrow VARCHAR(45) trail reused for vendor-performance scores instead of a dedicated report table. Hibernate maps entities with identity PKs, Lombok `@Getter`/`@Setter` only (no `@EqualsAndHashCode` on entities), and named queries for timer and list paths.
+
+**Hibernate / JTA.** One persistence unit, JTA, `jdbc/globalTradeLogisticsDS`. Container-managed `EntityManager` is injected with `@PersistenceContext(unitName = "globalTradeLogisticsPU")`. Default CMT attribute is `REQUIRED`, so an order write and its stock decrements commit or roll back together. `REQUIRES_NEW` isolates weekly vendor scoring per supplier. There is no `@Version` / optimistic lock and no `LockModeType` pessimistic lock — concurrency relies on short transactions and MySQL InnoDB row locks at commit.
+
+### 2.3 Configuration Documentation
+
+All application env vars are read **only** through `core.configs.AppConfig`. Database connectivity is **not** an env var in Java: it is the GlassFish JDBC resource named in `persistence.xml`.
+
+#### Environment variables
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `JWT_SECRET` | *(required)* | HS256 signing secret. Deploy fails with `IllegalStateException` if unset. |
+| `IS_PROD` | `false` | `false`: log OTP/emails/audits. `true`: publish to JMS (email + audit). |
+| `NOTIFICATION_TOPIC_JNDI` | `jms/notification.email.send` | Email topic. |
+| `NOTIFICATION_TOPIC_CF_JNDI` | `jms/notification.email.send.factory` | Email connection factory. |
+| `AUDIT_TOPIC_JNDI` | `jms/monitoring.audit.log` | Audit topic. |
+| `AUDIT_TOPIC_CF_JNDI` | `jms/monitoring.audit.log.factory` | Audit connection factory. |
+| `LOG_TOPIC_JNDI` | `jms/monitoring.trace.log` | Trace topic (always used). |
+| `LOG_TOPIC_CF_JNDI` | `jms/monitoring.trace.log.factory` | Trace connection factory. |
+| `ADMIN_EMAIL` | `admin@globaltradelogistics.local` | Bootstrap admin / timer alert recipient. |
+| `ADMIN_FULL_NAME` | `System Administrator` | Bootstrap admin display name. |
+| `SMTP_HOST` | *(empty)* | SMTP host; send is skipped if blank. |
+| `SMTP_PORT` | `587` | SMTP port (STARTTLS). |
+| `SMTP_AUTH` | `true` | SMTP AUTH. |
+| `SMTP_EMAIL` | *(empty)* | From-address / AUTH user. |
+| `SMTP_PASSWORD` | *(empty)* | AUTH password. |
+
+GlassFish/MySQL infra (used by Docker `entrypoint.sh`, not by `AppConfig`): `MYSQL_DATABASE=global_trade_log_corp`, `MYSQL_USER`/`MYSQL_PASSWORD=gtl_app`, `MYSQL_ROOT_PASSWORD=gtl_root`, `HTTP_PORT=8080`, `HTTPS_PORT=8181`, `JNDI_NAME=jdbc/globalTradeLogisticsDS`, `POOL_NAME=globalTradeLogisticsPool`.
+
+#### Quick start (Docker)
+
+```powershell
+docker compose up -d --build
+curl http://localhost:8080/api/v1/healthz
+```
+
+Staff console `http://localhost:8080/app/`, seller `http://localhost:8080/seller/`, shop `http://localhost:8080/`. With `IS_PROD=false`, OTP codes appear in logs: `docker compose logs app | grep OTP_AUTHENTICATION`.
+
+#### Manual deploy (no Docker)
+
+**1. Prerequisites.** JDK 11, Maven 3.9.x, MySQL 8, GlassFish 7.0.21, Connector/J 8.4.0 copied to `%GLASSFISH_HOME%\glassfish\domains\domain1\lib\mysql-jdbc.jar`.
+
+**2. Database.**
+
+```sql
+CREATE DATABASE global_trade_log_corp;
+CREATE USER 'gtl_app'@'%' IDENTIFIED BY 'gtl_app';
+GRANT ALL PRIVILEGES ON global_trade_log_corp.* TO 'gtl_app'@'%';
+FLUSH PRIVILEGES;
+```
+
+```powershell
+mysql -h localhost -u gtl_app -pgtl_app global_trade_log_corp < .no-build\db\schema.sql
+mysql -h localhost -u gtl_app -pgtl_app global_trade_log_corp < .no-build\db\test-data.sql
+```
+
+**3. Build.** `mvn -B clean package -DskipTests` → `app\target\glolabl-trade-logistics.ear`.
+
+**4. Set `JWT_SECRET` in the same shell that starts the domain** (GlassFish inherits process env):
+
+```powershell
+$env:JWT_SECRET = "dev-only-change-me-globaltradelogistics-jwt-secret"
+```
+
+**5. Start domain and HTTP ports.**
+
+```powershell
+asadmin start-domain domain1
+asadmin set server-config.network-config.network-listeners.network-listener.http-listener-1.port=8080
+asadmin set server-config.network-config.network-listeners.network-listener.http-listener-2.port=8181
+```
+
+**6. JDBC pool and JNDI resource.**
+
+```powershell
+asadmin create-jdbc-connection-pool `
+  --datasourceclassname com.mysql.cj.jdbc.MysqlDataSource `
+  --restype javax.sql.DataSource `
+  --steadypoolsize 2 --maxpoolsize 32 --maxwait 10000 `
+  --property "serverName=localhost:port=3306:databaseName=global_trade_log_corp:user=gtl_app:password=gtl_app:useSSL=false:allowPublicKeyRetrieval=true:serverTimezone=UTC" `
+  globalTradeLogisticsPool
+
+asadmin create-jdbc-resource --connectionpoolid globalTradeLogisticsPool jdbc/globalTradeLogisticsDS
+```
+
+**7. JMS resources** (OpenMQ / `jmsra` — no external broker).
+
+```powershell
+asadmin create-jms-resource --restype jakarta.jms.ConnectionFactory jms/notification.email.send.factory
+asadmin create-jms-resource --restype jakarta.jms.Topic --property Name=notification.email.send jms/notification.email.send
+asadmin create-jms-resource --restype jakarta.jms.ConnectionFactory jms/monitoring.audit.log.factory
+asadmin create-jms-resource --restype jakarta.jms.Topic --property Name=monitoring.audit.log jms/monitoring.audit.log
+asadmin create-jms-resource --restype jakarta.jms.ConnectionFactory jms/monitoring.trace.log.factory
+asadmin create-jms-resource --restype jakarta.jms.Topic --property Name=monitoring.trace.log jms/monitoring.trace.log
+```
+
+**8. Deploy.** `asadmin deploy --force=true "app\target\glolabl-trade-logistics.ear"`
+
+Verify: `curl http://localhost:8080/api/v1/healthz` → `Up and running`. Admin console: `http://localhost:4848/`. Redeploy after code changes with the same `mvn` + `asadmin deploy --force=true`. Pools persist in the domain; do not recreate them unless you start a new domain. Tear down: `asadmin undeploy glolabl-trade-logistics` then `asadmin stop-domain domain1`.
+
+`useSSL=false` and `allowPublicKeyRetrieval=true` are **dev-only**. Production TLS must not keep public-key retrieval on an unencrypted channel.
+
+---
+
+## 3. Component Analysis
+
+### 3.1 Timer Service implementations with supply chain scheduling and persistence analysis
+
+There is no OS cron. GlassFish EJB timers drive supply-chain housekeeping. Four beans use declarative `@Schedule` with `persistent = true` so the next fire is recomputed from the calendar expression after a restart. One bean (`InventoryReorderTimerBean`) uses programmatic `TimerService.createIntervalTimer` (15 minutes, `TimerConfig` name `inventory-reorder-check`, **non-persistent**) as the required contrast, armed in `@PostConstruct` on a `@Singleton @Startup` bean so it is not lazy.
+
+| Bean | Cadence | Supply-chain effect |
+|---|---|---|
+| `InventoryReorderTimerBean` | 15 min interval | JPQL `qty < reorderLevel`; `REORDER_ALERT` email + audit. |
+| `ShipmentStatusTimerBean` | `*/15` every hour | Coin-flip stand-in for a carrier poll; `IN_TRANSIT` → `DELIVERED`. |
+| `PurchaseOrderOverdueTimerBean` | Daily 02:00 | Open POs whose `createdAt + supplier leadTimeInDays` has passed; alerts supplier and admin. |
+| `CustomsDeadlineTimerBean` | Daily 06:00 | `PENDING` customs rows; admin `CUSTOMS_DEADLINE_WARNING`. |
+| `VendorPerformanceTimerBean` | Monday 03:00 | Calls `recomputeForSupplier` per supplier in `REQUIRES_NEW`. |
+
+Timers run with **no HTTP principal**, so they must not call `@RequiresRole` service methods. Status updates and reads go through `EntityManager` directly. Persistence of *schedule* is the EJB timer store; persistence of *business state* is MySQL. PO overdue and customs deadline have **no deadline columns** in the legacy schema — “late” is computed at fire time. That avoids a migration but means a job cannot index “due before now”; it scans open/pending rows. Persistent declarative timers survive bounce; the reorder interval timer does not, and is recreated on startup, which is acceptable for a 15-minute heartbeat.
+
+### 3.2 Interceptor Framework design with logistics performance impact assessment
+
+Cross-cutting policy is custom interceptors, not `@RolesAllowed` / JAAS. `@Secured` is a JAX-RS name binding on controllers: `JwtAuthFilter` validates Bearer HS256 JWTs and fills `CurrentPrincipalHolder` before any resource method. `@RequiresRole` on EJB methods is the real authorization boundary (`OR` of roles). `@Audited` runs `context.proceed()` first and publishes an `AuditEvent` only on success — a failed GRN or insufficient-stock order does not pollute `audit_records`. `@IdempotencyChecked` is method-level only; the last argument is the key by convention. `IdempotencyInterceptor` consults an in-memory `ConcurrentHashMap` registry and returns `null` on duplicates so shipment status updates are not applied twice.
+
+On `ShipmentServiceBean` the chain is explicit: `RequiresRoleInterceptor` → `IdempotencyInterceptor` → `AuditInterceptor`. Authorize first (cheap fail), skip duplicate logistics writes before they take a connection, audit only real mutations. Performance impact is small: each interceptor is an extra stack frame and a CDI `LogEvent` fire. The expensive work (JMS, SMTP) is off the interceptor thread except for the in-memory idempotency check, which is O(1) and avoids a duplicate customs-status UPDATE. The cost of TRACE-on-every-call is accepted so a live `server.log` tail can reconstruct a shipment without a debugger.
+
+### 3.3 Transaction Management Design with supply chain data isolation and recovery strategies
+
+Default isolation is **one CMT `REQUIRED` transaction per business method**. Placing an order decrements inventory and inserts `orders` / `order_items` together; a thrown failure before commit should leave stock unchanged. GRN similarly completes the PO, inserts `grns`, and raises warehouse qty in one unit of work. Vendor recompute uses `REQUIRES_NEW` so one supplier’s malformed GRN cannot roll back the whole Monday batch — that is **per-vendor isolation**, not customer-vs-vendor tenancy (there is no Hibernate Filter / discriminator for “tenant”).
+
+`CarrierGatewayBean` is `@TransactionManagement(BEAN)` with injected `UserTransaction`: short TX to read tracking/vessel, **no TX** during `Thread.sleep` carrier simulation, short TX to store `shipments.ref`. Recovery is “best-effort rollback” plus `SupplyChainSystemException` if the second TX fails after the carrier already returned a reference — possible **heuristic divergence** (carrier has a ref, DB does not), which is the honest cost of not holding locks across I/O.
+
+JMS publish from CMT typically enlists with the same JTA transaction when using a container-managed JMS session; here publishers open their own `JMSContext` via JNDI lookup. Combined with `IS_PROD` gating, a committed order can exist without a delivered email if publish is skipped or lookup fails (failures are logged and swallowed). Recovery of notifications is “at-most-once / log and continue,” not a retry table. MDB `onMessage` swallows SMTP `MessagingException` so GlassFish does not redeliver forever.
+
+Application (checked) exceptions do **not** automatically roll back CMT unless marked `@ApplicationException(rollback = true)` — which this codebase does not set. System (`RuntimeException`) failures do. Recovery at the HTTP edge is mapper-driven 4xx/5xx, not compensating sagas.
+
+### 3.4 Logistics security architecture with authN, AuthZ, and vendor session management
+
+**AuthN.** No passwords. `IUsersService.requestOtp` stores a SHA-256 hash in `otp_codes` (5-minute TTL) and publishes `OTP_AUTHENTICATION`. Verify consumes the row and issues an HS256 JWT (`sub` = email, `role`, `iat`/`exp`, 1-hour TTL) via a hand-rolled `JwtService` (JSON-P + `HmacSHA256`, constant-time signature compare). Invalid/missing Bearer is aborted in the filter as 401 (`InvalidTokenException`), not via an ExceptionMapper, because matching has not run yet.
+
+**AuthZ.** Seven roles: internal `ADMIN`, `WORKER`, `COORDINATOR`, `CUSTOMS_AGENT`, `WAREHOUSE_MANAGER`; external `VENDOR_REP`, `CUSTOMER`. Staff live in Hibernate-owned `users`; vendors/customers in legacy `suppliers`/`customers`. `@RequiresRole` on the EJB is authoritative; JSP nav hiding is UX only. Vendor and customer identifiers are **never** taken from the client for “my” resources: PO list, shippable POs, `GET /shipments/mine`, profile, and order history resolve `supplier_id` / `customer_id` from the JWT email. A vendor probing another vendor’s `poId` gets 404 indistinguishable from missing — same pattern as customer `orderId`.
+
+**Vendor session.** The JWT is the session. Frontends store it (typically `localStorage`/cookie as implemented in the JSPs) and send `Authorization: Bearer`. There is no server-side session replication, no refresh token, no revocation list: logout is client-side discard; stolen tokens live until `exp`. `CurrentPrincipalHolder.clear()` in a filter `finally` is mandatory because GlassFish reuses request threads.
+
+### 3.5 Exception Handling framework with supply chain recovery and optimization mechanisms
+
+Two roots: `SupplyChainApplicationException` (checked, expected business: OTP failure, 403, 404, 409 state/stock) and `SupplyChainSystemException` (unchecked, unexpected, HTTP 500 with a generic body so stack traces never leak). Each application type has a JAX-RS `ExceptionMapper` that emits a `LogEvent` WARN then `{"error": message}`. `BadRequestException` covers malformed bodies without a custom type.
+
+Optimization: mappers are O(1) JSON; TRACE/WARN already went to JMS so operators recover by grepping correlation keys (`shipment-7`, `po-1`, actor email) rather than reproducing with a debugger. Business recovery is **state-machine rejection**, not compensating transactions: GRN before `DELIVERED` or before customs `CLEARED` throws `InvalidShipmentStateException` (409) and leaves the PO open. Duplicate GRN is prevented by completing the PO and dropping the shipment from the awaiting-GRN list. Idempotent status updates prevent double carrier-side effects at the interceptor layer. Email/audit lookup failures are swallowed so the primary supply-chain write is not failed by a side channel — availability of stock movement is preferred over guaranteed notification.
+
+---
+
+## 4. Implementation analysis with critical evaluation
+
+### 4.1 Critical Analysis of timer service design decisions with global supply chain clustering considerations
+
+Mixing `@Schedule` and programmatic timers demonstrates both EJB APIs, but clustering was not a first-class requirement. `@Singleton` is **per JVM**, not a cluster-wide singleton unless GlassFish singleton-of-cluster is configured (it is not). Persistent timers in a multi-instance domain can fire on each instance or race on the timer datastore depending on HA setup — a second `ShipmentStatusTimerBean` would double the coin-flip promotions to `DELIVERED`. The non-persistent reorder timer would arm on every node independently. For a global network of warehouses this is unsafe: you want a clustered singleton or a DB lease (`SELECT ... FOR UPDATE` on a `timer_locks` row) before mutating shipments.
+
+Calendar times (02:00 PO overdue, 06:00 customs) are **server-local**, not per-timezone warehouse clocks. A UTC GlassFish with US and APAC warehouses will alert “morning” at the wrong local time. Lead-time overdue is computed from `createdAt` plus days with no business-calendar or timezone. The simulated carrier poll is pedagogically clear and operationally dishonest: a real poll should be idempotent, keyed by tracking number, and never randomly mark delivered. Persistence of the timer schedule is a strength for single-node ops; persistence of “this shipment was already polled this interval” is missing, so a restart mid-interval can immediately re-poll.
+
+### 4.2 Interceptor implementations strategy with logistics performance impact assessment
+
+Custom interceptors are the right teaching choice and a reasonable production choice for JWT-derived roles that JAAS would not see. Ordering on logistics beans is correct and cheap. Weaknesses: idempotency keys are **process memory** — a cluster or restart forgets them, so a retried `PUT /shipments/{id}/status` after failover can apply twice. The last-parameter convention is not compiler-enforced. Auditing every method on `OrderServiceBean` including reads increases JMS volume; TRACE on every interceptor compounds that. Under a high-rate tracking API this would dominate OpenMQ more than the interceptor CPU itself. A production logistics gateway would sample TRACE, persist idempotency in MySQL with a unique key, and keep `@Audited` on mutations only.
+
+### 4.3 Transaction management approach with supply chain attribute selection justification
+
+`REQUIRED` for order+stock and GRN+PO+inventory is the correct attribute: those writes are one business fact. `REQUIRES_NEW` for vendor scoring is justified: a weekly batch must not be all-or-nothing across suppliers. BMT for carrier I/O is justified: holding a JDBC connection across even 50 ms of external latency is a pool anti-pattern; at real carrier RTTs it becomes an outage.
+
+The missing `@ApplicationException(rollback = true)` on checked types is a real defect: if `placeOrder` decrements line 1 then throws `InsufficientInventoryException` on line 2, CMT may **commit** the first decrement. The current loop checks then decrements per line, so a mid-loop throw can leave partial stock movement unless the container treats the exception as rollback. Recovery documentation should not claim atomic multi-line orders until rollback is explicit. There is also no isolation-level override (`READ_COMMITTED` default): two customers buying the last unit can both pass the Java qty check before either commits (lost update). A `LockModeType.PESSIMISTIC_WRITE` on the inventory row, or a single `UPDATE inventory SET qty = qty - ? WHERE qty >= ?`, would be the supply-chain-correct fix.
+
+JMS side effects outside the JTA resource set mean “order committed, email not sent” is a designed failure mode. That is acceptable for OTP in dev; in production, transactional outbox (write `outbox` row in the same CMT, MDB polls) is the standard recovery strategy.
+
+### 4.4 Logistics Security architecture evaluation with vendor data threat mitigation strategies
+
+OTP-only staff/vendor login removes password-reuse risk and fits email-centric trade partners. Hashing OTP at rest and short TTL are sound. HS256 with a shared `JWT_SECRET` is adequate for a single domain and weak for multi-region: a leaked secret forges any role, including `ADMIN`. There is no key rotation, `nbf`, `jti`, or audience claim. Vendor threat model: IDOR is largely closed by email-scoped queries and 404-on-cross-tenant. Remaining risks: JWT theft (XSS on the JSP apps), the unauthenticated `notify-carrier` surface (any role, BMT demo), `WORKER` provisioned with no dedicated permissions (confused-deputy if a future endpoint forgets `@RequiresRole`), and admin-created suppliers vs self-signup (two paths, same tables). `IS_PROD=false` logs OTP codes — never in a shared log aggregator. Mitigation that is already present: role interceptor at EJB not only UI; customs `COMPLETED` cannot be set by the agent (only GRN); one shipment per open PO. Mitigation still needed: HTTPS-only cookies with `HttpOnly` for the token, refresh/revocation, and rate-limiting `POST /auth/otp/request` against email bombing.
+
+### 4.5 EJB best practices implementation with supply chain performance optimization analysis
+
+The project follows several EJB norms well: local interfaces for intra-EAR calls, stateless beans for CRUD, singleton timers, CMT by default, BMT isolated in its own bean (cannot mix CMT/BMT on one class), interceptors declared in `@Interceptors` rather than XML, MDBs for async consumers, and a single persistence unit. `core` in `lib/` so `persistence.xml` is visible by `unitName` is a real deployment-spec lesson.
+
+Performance: local calls avoid RMI; pool size 32 matches a modest warehouse staff, not peak Black-Friday retail plus every vendor polling shipments. Named queries and `setMaxResults(1)` for stock pick are good. Gaps versus EJB “best” for this domain: no `@Asynchronous` for long vendor reports (the weekly timer is batch, not user-facing); no entity graphs / fetch joins documented for shipment+customs list pages (risk of N+1 when mapping summaries); TRACE JMS on the happy path adds a send per step; Hibernate `update` DDL in production is not a best practice (use Flyway/Liquibase). Remote `IUsersService` adds serialization cost for the hottest unauthenticated path (OTP) — a local interface would be faster; remote is justified only as a syllabus artifact.
+
+### 4.6 Exception Handling strategy with logistics resilience and recovery evaluation
+
+The two-root taxonomy maps cleanly to 4xx vs 500 and keeps JAX-RS controllers thin. State-conflict 409s (`InvalidShipmentStateException`, `InsufficientInventoryException`) are the right tool for a shipment state machine: clients retry after customs clearance rather than the server inventing compensations. Resilience is weaker on the async edge: swallowed JMS/SMTP errors mean silent loss; MDB not throwing avoids poison-message loops but also avoids a DLQ. Checked application exceptions without rollback annotation undermine the “fail closed on stock” story. System mapper hiding details is correct for vendors on the public API; operators must rely on TRACE/SEVERE logs. Overall: good *detection* and *HTTP contract*, incomplete *transactional* and *message* recovery for a real customs/warehouse network.
+
+---
+
+## 5. Limitations and Future Enhancements
+
+**Limitations.** Single-instance assumptions: in-memory idempotency, per-JVM timers, ThreadLocal security, HS256 shared secret. Legacy schema typos (`wearhouses`, `vessal_id`, `custom_clearence_records`) and VARCHAR(45) audit columns force truncation in `AuditPersisterMdb`. No real carrier or customs EDI — timers and `CarrierGatewayBean` simulate. `WORKER` has no backend flow. No pessimistic/optimistic inventory locking. Checked exceptions may not roll back CMT. Email/audit are not transactional with business commits. Hibernate `hbm2ddl.auto=update` is unsafe as a production migrator. Timer cron expressions are compile-time only. JWT has no revocation. Docker/dev SSL flags must not ship.
+
+**Future enhancements.** Cluster-singleton or Quartz/JDBC job locking for timers; persist idempotency keys with a unique constraint; `@ApplicationException(rollback = true)` and `UPDATE ... WHERE qty >= :q` for stock; transactional outbox for email and audit; Flyway migrations instead of `update`; RS256 JWT with rotation and a denylist; HttpOnly cookie sessions; rate-limited OTP; real carrier webhooks replacing coin-flip delivery; deadline columns and assigned customs agents; timezone-aware schedules; OpenTelemetry instead of homemade TRACE JMS if volume grows; dedicated vendor-performance table if reports outgrow `audit_records`; HTTPS and a mail JNDI resource if operations prefer GlassFish-managed SMTP over env-built `jakarta.mail.Session`.
+
+---
+
+## Companion documents
+
+| Doc | Contents |
+|---|---|
+| [`.no-build/docs/SETUP_GUIDE.md`](.no-build/docs/SETUP_GUIDE.md) | Manual GlassFish setup, troubleshooting |
+| [`.no-build/docs/API_DOCS.md`](.no-build/docs/API_DOCS.md) | HTTP API |
+| [`.no-build/docs/RBAC.md`](.no-build/docs/RBAC.md) | Who can call what |
+| [`.no-build/docs/ANNOTATIONS.md`](.no-build/docs/ANNOTATIONS.md) | Interceptors |
+| [`.no-build/docs/CRON_JOBS.md`](.no-build/docs/CRON_JOBS.md) | Timers |
+| [`.no-build/docs/EXCEPTIONS.md`](.no-build/docs/EXCEPTIONS.md) | Error mapping |
+| [`.no-build/docs/TRACE_LOGGING.md`](.no-build/docs/TRACE_LOGGING.md) | Live breadcrumbs |
+| [`.no-build/docs/E2E_TEST_FLOW.md`](.no-build/docs/E2E_TEST_FLOW.md) | Browser PO → GRN walkthrough |
