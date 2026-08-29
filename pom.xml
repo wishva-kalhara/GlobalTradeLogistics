@@ -30,6 +30,7 @@
         <maven.compiler.target>11</maven.compiler.target>
         <maven.compiler.source>11</maven.compiler.source>
         <junit.version>5.10.2</junit.version>
+        <mockito.version>5.11.0</mockito.version>
     </properties>
 
     <dependencies>
@@ -49,6 +50,28 @@
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
             <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <!-- Test-only: EJB service beans are plain POJOs when instantiated
+                 directly (no container proxy), so their @PersistenceContext/@EJB
+                 fields need a mock injected via reflection in tests — Mockito
+                 mocks EntityManager/TypedQuery for that. -->
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>${mockito.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <!-- Test-only: jakarta.jakartaee-api above is API-only (no
+                 implementation) — GlassFish supplies the real Jakarta JSON
+                 Processing impl at runtime, but a plain `mvn test` JVM has
+                 none, so JwtService's Json.createObjectBuilder()/createReader()
+                 calls fail with JsonException without this. Parsson is the
+                 same JSON-P implementation GlassFish 7 bundles. -->
+            <groupId>org.eclipse.parsson</groupId>
+            <artifactId>parsson</artifactId>
+            <version>1.1.5</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
