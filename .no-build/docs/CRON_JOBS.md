@@ -22,6 +22,8 @@ data that's normally gated by `@RequiresRole`, it writes directly via
 `EntityManager` instead of going through the guarded service interface (see
 each bean's note below).
 
+Each timer bean also fires `LogEvent` `TRACE` lines at the start of its run and per entity processed — correlation keys like `shipment-status-timer`, `po-overdue-timer`. See [`TRACE_LOGGING.md`](./TRACE_LOGGING.md).
+
 ## Summary
 
 | Module | Bean | Trigger | What it does |

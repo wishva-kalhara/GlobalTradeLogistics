@@ -26,6 +26,8 @@ set -euo pipefail
 : "${AUDIT_TOPIC_JNDI:?AUDIT_TOPIC_JNDI is required (see .desired-state/glassfish.conf)}"
 : "${IDEMPOTENCY_QUEUE_CF_JNDI:?IDEMPOTENCY_QUEUE_CF_JNDI is required (see .desired-state/glassfish.conf)}"
 : "${IDEMPOTENCY_QUEUE_JNDI:?IDEMPOTENCY_QUEUE_JNDI is required (see .desired-state/glassfish.conf)}"
+: "${LOG_TOPIC_CF_JNDI:?LOG_TOPIC_CF_JNDI is required (see .desired-state/glassfish.conf)}"
+: "${LOG_TOPIC_JNDI:?LOG_TOPIC_JNDI is required (see .desired-state/glassfish.conf)}"
 
 ASADMIN="${GLASSFISH_HOME}/bin/asadmin"
 DOMAIN="domain1"
@@ -91,6 +93,18 @@ fi
 
 if ! "${ASADMIN}" list-jms-resources | grep -q "^${IDEMPOTENCY_QUEUE_JNDI}$"; then
   "${ASADMIN}" create-jms-resource --restype jakarta.jms.Queue --property Name=monitoring.idempotency.check "${IDEMPOTENCY_QUEUE_JNDI}"
+fi
+
+# Trace-log Topic: LogsObserver (CDI observer, monitoring-svc) forwards every
+# LogEvent fired from a business flow here; TraceLogMdb consumes and prints
+# it (never persisted) — see AppConfig#LOG_TOPIC_JNDI.
+echo "[entrypoint] configuring JMS trace-log topic (${LOG_TOPIC_JNDI})"
+if ! "${ASADMIN}" list-jms-resources | grep -q "^${LOG_TOPIC_CF_JNDI}$"; then
+  "${ASADMIN}" create-jms-resource --restype jakarta.jms.ConnectionFactory "${LOG_TOPIC_CF_JNDI}"
+fi
+
+if ! "${ASADMIN}" list-jms-resources | grep -q "^${LOG_TOPIC_JNDI}$"; then
+  "${ASADMIN}" create-jms-resource --restype jakarta.jms.Topic --property Name=monitoring.trace.log "${LOG_TOPIC_JNDI}"
 fi
 
 echo "[entrypoint] deploying ${EAR_FILE}"

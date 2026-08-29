@@ -30,8 +30,9 @@ By the end of this flow you will have, entirely through the UI:
    docker compose logs app | grep OTP_AUTHENTICATION
    ```
    and take the `code=NNNNNN` from the most recent line for that email. This is the one step in the whole flow that isn't a browser action — everything else is a click, a type, or reading what's rendered on the page.
-5. Seeded ADMIN account: `admin@globaltradelogistics.local`.
-6. Use distinct emails for the accounts you create below (e.g. suffix them with today's date or a run number) if you're re-running this flow against a database that already has data from a prior run.
+5. **Debugging a stuck step**: every API call emits `[TRACE]` / `[WARN]` breadcrumbs to the server log (see [`TRACE_LOGGING.md`](./TRACE_LOGGING.md)). Grep by email or entity id — e.g. `docker compose logs app | grep "shipment-1"` or `grep "e2e.coord@example.com"`.
+6. Seeded ADMIN account: `admin@globaltradelogistics.local`.
+7. Use distinct emails for the accounts you create below (e.g. suffix them with today's date or a run number) if you're re-running this flow against a database that already has data from a prior run.
 
 ---
 

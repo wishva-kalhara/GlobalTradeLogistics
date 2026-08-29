@@ -8,6 +8,8 @@ mocked `EntityManager`/collaborators injected via reflection — this bypasses t
 container proxy, so `@RequiresRole`/`@Audited`/`@IdempotencyChecked` interceptors never
 fire. Only plain business logic is under test.
 
+`RequiresRoleInterceptorTest` is the exception: it exercises the interceptor directly and injects a mocked `Event<LogEvent>` via reflection (the interceptor fires trace lines on auth denial, but the mock absorbs them so assertions stay focused on allow/deny behavior).
+
 ## How to run
 
 ```powershell

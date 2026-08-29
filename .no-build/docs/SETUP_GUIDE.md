@@ -91,6 +91,8 @@ In this repo, every variable below is defined directly in `docker-compose.yml`'s
 | `AUDIT_TOPIC_CF_JNDI` | `jms/monitoring.audit.log.factory` | Connection factory for the above. |
 | `IDEMPOTENCY_QUEUE_JNDI` | `jms/monitoring.idempotency.check` | JMS Queue for durable idempotency-key tracking (`@IdempotencyChecked`). |
 | `IDEMPOTENCY_QUEUE_CF_JNDI` | `jms/monitoring.idempotency.check.factory` | Connection factory for the above. |
+| `LOG_TOPIC_JNDI` | `jms/monitoring.trace.log` | JMS Topic for step-by-step trace breadcrumbs (`LogEvent`, see [`TRACE_LOGGING.md`](./TRACE_LOGGING.md)). |
+| `LOG_TOPIC_CF_JNDI` | `jms/monitoring.trace.log.factory` | Connection factory for the above. |
 | `ADMIN_EMAIL` | `admin@globaltradelogistics.local` | Bootstrap ADMIN account email, seeded once by `AdminSeedBean` if `users` is empty. |
 | `ADMIN_FULL_NAME` | `System Administrator` | Bootstrap ADMIN's full name. |
 
@@ -154,7 +156,7 @@ This exact JNDI name (`jdbc/globalTradeLogisticsDS`) is hardcoded in `persistenc
 
 ### 6.5 Create the JMS resources
 
-Three connection-factory/destination pairs, all riding on GlassFish's built-in OpenMQ (`jmsra`) — no external broker needed.
+Four connection-factory/destination pairs, all riding on GlassFish's built-in OpenMQ (`jmsra`) — no external broker needed.
 
 ```powershell
 # Notification email topic (notification-svc)
@@ -168,6 +170,10 @@ asadmin create-jms-resource --restype jakarta.jms.Topic --property Name=monitori
 # Idempotency-check queue (monitoring-svc)
 asadmin create-jms-resource --restype jakarta.jms.ConnectionFactory jms/monitoring.idempotency.check.factory
 asadmin create-jms-resource --restype jakarta.jms.Queue --property Name=monitoring.idempotency.check jms/monitoring.idempotency.check
+
+# Trace-log topic (monitoring-svc — LogEvent live tail, always active)
+asadmin create-jms-resource --restype jakarta.jms.ConnectionFactory jms/monitoring.trace.log.factory
+asadmin create-jms-resource --restype jakarta.jms.Topic --property Name=monitoring.trace.log jms/monitoring.trace.log
 ```
 
 If you customized any of the `*_JNDI`/`*_CF_JNDI` env vars in §5 away from their defaults, use those names here instead — they must match exactly, since `AppConfig` is what the app code looks up by.
@@ -211,6 +217,14 @@ Select-String -Path "$env:GLASSFISH_HOME\glassfish\domains\domain1\logs\server.l
 ```
 
 Take the most recent `code=NNNNNN` for the email you requested.
+
+Step-by-step request traces (`LogEvent`) are printed under the `TRACE` logger name — every controller entry, service call, interceptor decision, and mapped exception emits one. To watch them live:
+
+```powershell
+Select-String -Path "$env:GLASSFISH_HOME\glassfish\domains\domain1\logs\server.log" -Pattern "\[TRACE\]|\[WARN\]" -Wait
+```
+
+See [`TRACE_LOGGING.md`](./TRACE_LOGGING.md) for the full pipeline and correlation-key conventions.
 
 ---
 

@@ -50,6 +50,19 @@ public final class AppConfig {
             optional("IDEMPOTENCY_QUEUE_CF_JNDI", "jms/monitoring.idempotency.check.factory");
 
     /**
+     * JNDI name of the trace-log Topic (monitoring-svc's {@code LogsObserver}
+     * publishes here, {@code TraceLogMdb} consumes) — every {@code LogEvent}
+     * fired via CDI from a business flow ends up here, printed (never
+     * persisted) so prod is debuggable without a table full of TRACE rows.
+     */
+    public static final String LOG_TOPIC_JNDI =
+            optional("LOG_TOPIC_JNDI", "jms/monitoring.trace.log");
+
+    /** JNDI name of the connection factory for {@link #LOG_TOPIC_JNDI}. */
+    public static final String LOG_TOPIC_CF_JNDI =
+            optional("LOG_TOPIC_CF_JNDI", "jms/monitoring.trace.log.factory");
+
+    /**
      * Email/full name for the bootstrap ADMIN account — see
      * {@code AdminSeedBean}. There is no other way to get an ADMIN into an
      * empty {@code users} table ({@code IUserAdminService.createUser}

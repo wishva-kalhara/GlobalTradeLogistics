@@ -1,6 +1,8 @@
 # GlobalTrade Logistics — Exception Reference
 
-All custom exception types, where they're thrown, and how `api-gateway` maps them to an HTTP response. Every error response is `{"error": "<message>"}` (see [`API_DOCS.md`](./API_DOCS.md) §1/§12 for the wire-level contract).
+All custom exception types, where they're thrown, and how `api-gateway` maps them to an HTTP response. Every error response is `{"error": "<message>"}` (see [`API_DOCS.md`](./API_DOCS.md) §12 for the wire-level contract).
+
+Every custom `ExceptionMapper` in `api-gateway/exception` also fires a `LogEvent` at `WARN` with the exception message before building the HTTP response — so 4xx/5xx outcomes appear in the live trace tail (see [`TRACE_LOGGING.md`](./TRACE_LOGGING.md)). `InvalidTokenException` is the one auth failure that bypasses mappers entirely; `JwtAuthFilter` logs it inline instead.
 
 ---
 
@@ -12,7 +14,7 @@ Every custom exception in `core.exception` extends one of these two roots — ne
 Base type for recoverable, expected business conditions. Checked, because the caller is meant to handle it — typically by letting it propagate up to a JAX-RS `ExceptionMapper` that turns it into a 4xx response. Every exception in §2 extends this.
 
 ### `SupplyChainSystemException` (unchecked)
-Base type for unexpected/system failures. Unchecked (a `RuntimeException`), so it always rolls back a container-managed transaction per EJB exception-handling semantics, and needs no `throws` clause threaded through every method signature. Mapped to a generic `500` by `SupplyChainSystemExceptionMapper`, with the real exception logged server-side (`Level.SEVERE`) but never leaked to the client (`{"error": "An unexpected error occurred"}`).
+Base type for unexpected/system failures. Unchecked (a `RuntimeException`), so it always rolls back a container-managed transaction per EJB exception-handling semantics, and needs no `throws` clause threaded through every method signature. Mapped to a generic `500` by `SupplyChainSystemExceptionMapper`, which fires a `LogEvent` `WARN`, logs the real exception at `Level.SEVERE`, and never leaks details to the client (`{"error": "An unexpected error occurred"}`).
 
 ---
 
@@ -48,5 +50,5 @@ Two more 4xx cases are **not** custom exceptions — they use JAX-RS's own `jaka
 ## 4. Adding a new exception
 
 1. Extend `SupplyChainApplicationException` (recoverable — the caller/gateway should turn it into a specific 4xx) or let an unexpected failure surface as `SupplyChainSystemException` directly (no new subtype needed for that path).
-2. For a new `SupplyChainApplicationException` subtype, add a matching `@Provider`-annotated `ExceptionMapper<YourException>` in `api-gateway`'s `exception` package, following the existing ones's shape: `Response.status(...).entity(Map.of("error", exception.getMessage())).build()`.
+2. For a new `SupplyChainApplicationException` subtype, add a matching `@Provider`-annotated `ExceptionMapper<YourException>` in `api-gateway`'s `exception` package, following the existing ones's shape: fire a `LogEvent` `WARN`, then `Response.status(...).entity(Map.of("error", exception.getMessage())).build()`.
 3. Add a row to §2 above and to `API_DOCS.md` §12.

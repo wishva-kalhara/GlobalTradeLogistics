@@ -2,7 +2,7 @@
 
 REST API for `api-gateway`, mounted at context root `/api` with all resources under `/v1`. Every endpoint below is `http://localhost:8080/api/v1/<path>` in a local `docker compose` deployment.
 
-Companion docs: [`E2E_TEST_PLAN.md`](./E2E_TEST_PLAN.md) (manual test cases) and [`E2E_FLOWS.md`](./E2E_FLOWS.md) (mermaid diagrams) walk through these endpoints from the UI's perspective.
+Companion docs: [`E2E_TEST_PLAN.md`](./E2E_TEST_PLAN.md) (manual test cases), [`E2E_FLOWS.md`](./E2E_FLOWS.md) (mermaid diagrams), and [`TRACE_LOGGING.md`](./TRACE_LOGGING.md) (step-by-step `LogEvent` tail for debugging API calls).
 
 ---
 
@@ -11,7 +11,8 @@ Companion docs: [`E2E_TEST_PLAN.md`](./E2E_TEST_PLAN.md) (manual test cases) and
 - **Content type**: request and response bodies are `application/json` unless noted (a few endpoints return no body — `204 No Content` / `201 Created`).
 - **Authentication**: endpoints marked 🔒 require `Authorization: Bearer <jwt>`. The JWT is obtained from `POST /auth/otp/verify` or either `POST /auth/signup/*` endpoint. Tokens are signed HS256, carry `sub` (email) and `role` claims, and expire 1 hour after issuance (`iat`/`exp`).
 - **Authorization**: some 🔒 endpoints are further gated to specific roles (noted per endpoint). Role enforcement happens at the EJB layer via a custom `@RequiresRole` interceptor — **not** container-managed security — so a valid-but-wrong-role token gets a genuine `403`, not just a UI-level block.
-- **Error shape**: every error response is `{"error": "<message>"}`, mapped from a Java exception via a JAX-RS `ExceptionMapper`. See §7 for the full exception→status table.
+- **Trace logging**: every endpoint, service method, interceptor, and exception mapper fires CDI `LogEvent` breadcrumbs (`TRACE` for normal steps, `WARN` for expected failures). Lines appear in `server.log` under the `TRACE` logger — grep `[TRACE]` or a correlation key (usually the caller's email). Not persisted; see [`TRACE_LOGGING.md`](./TRACE_LOGGING.md).
+- **Error shape**: every error response is `{"error": "<message>"}`, mapped from a Java exception via a JAX-RS `ExceptionMapper`. See §12 for the full exception→status table.
 - **Roles** (`core.enums.Role`): `ADMIN`, `WORKER`, `COORDINATOR`, `CUSTOMS_AGENT`, `WAREHOUSE_MANAGER`, `VENDOR_REP`, `CUSTOMER`.
 
 ---
