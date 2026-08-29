@@ -31,10 +31,13 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Tool versions are desired state, not build args — single source of truth
-# lives in .desired-state/versions.env.
-COPY .desired-state/versions.env /tmp/versions.env
+# lives in .desired-state/glassfish.conf (also holds MySQL credentials and
+# runtime GlassFish/JDBC-pool/JMS config consumed later by entrypoint.sh —
+# only the two version vars below are relevant at build time; the rest just
+# ride along harmlessly when sourced here).
+COPY .desired-state/glassfish.conf /tmp/glassfish.conf
 
-RUN set -a && . /tmp/versions.env && set +a \
+RUN set -a && . /tmp/glassfish.conf && set +a \
     && curl -fSL "https://download.eclipse.org/ee4j/glassfish/glassfish-${GLASSFISH_VERSION}.zip" -o /tmp/glassfish.zip \
     && unzip -q /tmp/glassfish.zip -d /opt \
     && mv /opt/glassfish7 "${GLASSFISH_HOME}" 2>/dev/null || true \
@@ -42,7 +45,7 @@ RUN set -a && . /tmp/versions.env && set +a \
     # MySQL JDBC driver (Connector/J), so the app can reach the database container
     && curl -fSL "https://repo1.maven.org/maven2/com/mysql/mysql-connector-j/${MYSQL_JDBC_VERSION}/mysql-connector-j-${MYSQL_JDBC_VERSION}.jar" \
        -o "${GLASSFISH_HOME}/glassfish/domains/domain1/lib/mysql-jdbc.jar" \
-    && rm -f /tmp/versions.env
+    && rm -f /tmp/glassfish.conf
 
 COPY --from=build /workspace/app/target/*.ear /opt/deploy/global-trade-logistics.ear
 COPY .build-new/entrypoint.sh /opt/glassfish7/entrypoint.sh

@@ -2,28 +2,30 @@
 set -euo pipefail
 
 # All desired state for this container is expected to arrive as environment
-# variables sourced from .desired-state/db.env and .desired-state/app.env
-# (wired up via docker-compose.yml's env_file directives). Fail fast if
-# required values are missing instead of silently defaulting.
-: "${MYSQL_DATABASE:?MYSQL_DATABASE is required (see .desired-state/db.env)}"
-: "${MYSQL_USER:?MYSQL_USER is required (see .desired-state/db.env)}"
-: "${MYSQL_PASSWORD:?MYSQL_PASSWORD is required (see .desired-state/db.env)}"
-: "${DB_HOST:?DB_HOST is required (see .desired-state/app.env)}"
-: "${DB_PORT:?DB_PORT is required (see .desired-state/app.env)}"
-: "${HTTP_PORT:?HTTP_PORT is required (see .desired-state/app.env)}"
-: "${HTTPS_PORT:?HTTPS_PORT is required (see .desired-state/app.env)}"
-: "${JNDI_NAME:?JNDI_NAME is required (see .desired-state/app.env)}"
-: "${POOL_NAME:?POOL_NAME is required (see .desired-state/app.env)}"
-: "${DB_POOL_MIN_SIZE:?DB_POOL_MIN_SIZE is required (see .desired-state/app.env)}"
-: "${DB_POOL_MAX_SIZE:?DB_POOL_MAX_SIZE is required (see .desired-state/app.env)}"
-: "${DB_POOL_MAX_WAIT_MS:?DB_POOL_MAX_WAIT_MS is required (see .desired-state/app.env)}"
-: "${JWT_SECRET:?JWT_SECRET is required (see .desired-state/app.env)}"
-: "${NOTIFICATION_TOPIC_CF_JNDI:?NOTIFICATION_TOPIC_CF_JNDI is required (see .desired-state/app.env)}"
-: "${NOTIFICATION_TOPIC_JNDI:?NOTIFICATION_TOPIC_JNDI is required (see .desired-state/app.env)}"
-: "${AUDIT_TOPIC_CF_JNDI:?AUDIT_TOPIC_CF_JNDI is required (see .desired-state/app.env)}"
-: "${AUDIT_TOPIC_JNDI:?AUDIT_TOPIC_JNDI is required (see .desired-state/app.env)}"
-: "${IDEMPOTENCY_QUEUE_CF_JNDI:?IDEMPOTENCY_QUEUE_CF_JNDI is required (see .desired-state/app.env)}"
-: "${IDEMPOTENCY_QUEUE_JNDI:?IDEMPOTENCY_QUEUE_JNDI is required (see .desired-state/app.env)}"
+# variables — MySQL credentials + GlassFish/JDBC-pool/JMS-resource config
+# sourced from .desired-state/glassfish.conf (env_file), the application's
+# own runtime config from docker-compose.yml's app.environment block
+# directly (wired up via docker-compose.yml). Fail fast if required values
+# are missing instead of silently defaulting.
+: "${MYSQL_DATABASE:?MYSQL_DATABASE is required (see .desired-state/glassfish.conf)}"
+: "${MYSQL_USER:?MYSQL_USER is required (see .desired-state/glassfish.conf)}"
+: "${MYSQL_PASSWORD:?MYSQL_PASSWORD is required (see .desired-state/glassfish.conf)}"
+: "${DB_HOST:?DB_HOST is required (see .desired-state/glassfish.conf)}"
+: "${DB_PORT:?DB_PORT is required (see .desired-state/glassfish.conf)}"
+: "${HTTP_PORT:?HTTP_PORT is required (see .desired-state/glassfish.conf)}"
+: "${HTTPS_PORT:?HTTPS_PORT is required (see .desired-state/glassfish.conf)}"
+: "${JNDI_NAME:?JNDI_NAME is required (see .desired-state/glassfish.conf)}"
+: "${POOL_NAME:?POOL_NAME is required (see .desired-state/glassfish.conf)}"
+: "${DB_POOL_MIN_SIZE:?DB_POOL_MIN_SIZE is required (see .desired-state/glassfish.conf)}"
+: "${DB_POOL_MAX_SIZE:?DB_POOL_MAX_SIZE is required (see .desired-state/glassfish.conf)}"
+: "${DB_POOL_MAX_WAIT_MS:?DB_POOL_MAX_WAIT_MS is required (see .desired-state/glassfish.conf)}"
+: "${JWT_SECRET:?JWT_SECRET is required (see docker-compose.yml app.environment block)}"
+: "${NOTIFICATION_TOPIC_CF_JNDI:?NOTIFICATION_TOPIC_CF_JNDI is required (see .desired-state/glassfish.conf)}"
+: "${NOTIFICATION_TOPIC_JNDI:?NOTIFICATION_TOPIC_JNDI is required (see .desired-state/glassfish.conf)}"
+: "${AUDIT_TOPIC_CF_JNDI:?AUDIT_TOPIC_CF_JNDI is required (see .desired-state/glassfish.conf)}"
+: "${AUDIT_TOPIC_JNDI:?AUDIT_TOPIC_JNDI is required (see .desired-state/glassfish.conf)}"
+: "${IDEMPOTENCY_QUEUE_CF_JNDI:?IDEMPOTENCY_QUEUE_CF_JNDI is required (see .desired-state/glassfish.conf)}"
+: "${IDEMPOTENCY_QUEUE_JNDI:?IDEMPOTENCY_QUEUE_JNDI is required (see .desired-state/glassfish.conf)}"
 
 ASADMIN="${GLASSFISH_HOME}/bin/asadmin"
 DOMAIN="domain1"

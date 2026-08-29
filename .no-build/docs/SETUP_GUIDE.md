@@ -2,9 +2,8 @@
 
 Everything `docker compose up` does for you — build the EAR, install GlassFish + the MySQL JDBC driver, configure the JDBC pool/resource and JMS resources, deploy — done by hand instead. Every value below (ports, pool sizes, JNDI names, env vars) is copied straight from this repo's actual desired-state files, not invented:
 
-- [`.desired-state/versions.env`](../../.desired-state/versions.env) — tool versions
-- [`.desired-state/db.env`](../../.desired-state/db.env) — MySQL credentials
-- [`.desired-state/app.env`](../../.desired-state/app.env) — everything else
+- [`.desired-state/glassfish.conf`](../../.desired-state/glassfish.conf) — build-time tool versions, MySQL credentials, and GlassFish/JDBC-pool/JMS-resource config (consolidated into one file — see its header for exactly which consumer reads which section)
+- [`docker-compose.yml`](../../docker-compose.yml)'s `app.environment` block — the application's own runtime config (deliberately **not** a `.desired-state` file — see §5)
 - [`.build-new/entrypoint.sh`](../../.build-new/entrypoint.sh) — the exact `asadmin` commands this guide manualizes
 - [`Dockerfile`](../../Dockerfile) — the exact build/runtime versions this guide manualizes
 
@@ -28,7 +27,7 @@ Set `GLASSFISH_HOME` to wherever you unzip GlassFish (e.g. `C:\glassfish7`), and
 
 ## 2. Set up MySQL
 
-These are the exact credentials the app is configured to use (`.desired-state/db.env`) — reuse them so you don't have to touch `app.env`'s connection-pool property string in §5.
+These are the exact credentials the app is configured to use (`.desired-state/glassfish.conf`) — reuse them so you don't have to touch its connection-pool property string in §6.
 
 ```sql
 CREATE DATABASE global_trade_log_corp;
@@ -80,9 +79,11 @@ This produces `app\target\glolabl-trade-logistics.ear` (note the `finalName` typ
 
 The app reads every one of these through `core.configs.AppConfig` — never scattered `System.getenv(...)` calls, so this table is exhaustive. **Only `JWT_SECRET` is actually required** (the app throws `IllegalStateException` at deploy time if it's missing); everything else has a code-level default matching the "Default" column.
 
+In this repo, every variable below is defined directly in `docker-compose.yml`'s `app.environment` block — **not** a `.desired-state` file, on purpose: `.desired-state/glassfish.conf` (§6) is GlassFish/JDBC-pool/JMS-resource setup that only `entrypoint.sh` ever reads, while these are what the deployed application itself reads. The four `*_JNDI`/`*_CF_JNDI` names are the one deliberate exception — they're duplicated in both places, since `entrypoint.sh` needs them to *create* those JMS resources and the app needs the identical names to *look them up* at runtime.
+
 | Variable | Default (if unset) | Used for |
 |---|---|---|
-| `JWT_SECRET` | *(none — required)* | HS256 signing secret for issued JWTs (`JwtService`). Any non-blank string works for local dev — e.g. `dev-only-change-me-globaltradelogistics-jwt-secret` (the repo's own dev value, from `app.env`). |
+| `JWT_SECRET` | *(none — required)* | HS256 signing secret for issued JWTs (`JwtService`). Any non-blank string works for local dev — e.g. `dev-only-change-me-globaltradelogistics-jwt-secret` (the repo's own dev value, from `docker-compose.yml`). |
 | `IS_PROD` | `false` | `false` = `NotificationPublisher` logs emails instead of sending them, and durable idempotency-key tracking is inactive (see `EXCEPTIONS.md`'s idempotency caveat). Leave `false` for local dev. |
 | `NOTIFICATION_TOPIC_JNDI` | `jms/notification.email.send` | JMS Topic name for outbound email notifications. |
 | `NOTIFICATION_TOPIC_CF_JNDI` | `jms/notification.email.send.factory` | Connection factory for the above. |
@@ -93,7 +94,7 @@ The app reads every one of these through `core.configs.AppConfig` — never scat
 | `ADMIN_EMAIL` | `admin@globaltradelogistics.local` | Bootstrap ADMIN account email, seeded once by `AdminSeedBean` if `users` is empty. |
 | `ADMIN_FULL_NAME` | `System Administrator` | Bootstrap ADMIN's full name. |
 
-Since the code defaults already match every value in `app.env` except `JWT_SECRET`, the minimum you actually need to set is:
+Since the code defaults already match every value docker-compose sets except `JWT_SECRET`, the minimum you actually need to set is:
 
 ```powershell
 $env:JWT_SECRET = "dev-only-change-me-globaltradelogistics-jwt-secret"
@@ -107,7 +108,7 @@ The database connection is **not** an env var the app reads directly — it goes
 
 ## 6. Start and configure the GlassFish domain
 
-All commands below are the exact `asadmin` calls `entrypoint.sh` runs, with `.desired-state/app.env`'s actual values substituted in. Run from a shell where `JWT_SECRET` is already set (§5) and `asadmin` is on `PATH`.
+All commands below are the exact `asadmin` calls `entrypoint.sh` runs, with `.desired-state/glassfish.conf`'s actual values substituted in. Run from a shell where `JWT_SECRET` is already set (§5) and `asadmin` is on `PATH`.
 
 ### 6.1 Start the domain
 
