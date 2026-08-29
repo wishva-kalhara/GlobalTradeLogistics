@@ -7,8 +7,26 @@
     <file url="file://$PROJECT_DIR$/app/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/core/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/core/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/frontend-app/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/frontend-app/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/frontend-customer/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/frontend-customer/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/frontend-seller/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/frontend-seller/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/iam-svc/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/iam-svc/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/inventory-svc/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/inventory-svc/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/logistics-svc/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/logistics-svc/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/monitoring-svc/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/monitoring-svc/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/notification-svc/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/notification-svc/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/order-svc/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/order-svc/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/procurement-svc/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/procurement-svc/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/src/main/resources" charset="UTF-8" />
   </component>
