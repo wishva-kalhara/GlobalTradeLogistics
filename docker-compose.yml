@@ -9,12 +9,9 @@ services:
       - "3306:3306"
     volumes:
       - db-data:/var/lib/mysql
-      # This is the only hand-written SQL in the stack: the 15-table legacy
-      # SCM schema the assignment says we integrate with. Everything we
-      # added ourselves (users, otp_codes, email-uniqueness constraints) is
-      # schema-owned by Hibernate (hibernate.hbm2ddl.auto=update) instead —
-      # see core's persistence.xml.
+      # SCM schema + manual test dataset (replaces deploy-time seed beans).
       - ./.no-build/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./.no-build/db/test-data.sql:/docker-entrypoint-initdb.d/02-test-data.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
       interval: 10s

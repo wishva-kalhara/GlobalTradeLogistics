@@ -40,7 +40,10 @@ Then load the legacy schema (the 15 pre-existing SCM tables — everything else 
 
 ```powershell
 mysql -h localhost -u gtl_app -p global_trade_log_corp < ".no-build\db\schema.sql"
+mysql -h localhost -u gtl_app -p global_trade_log_corp < ".no-build\db\test-data.sql"
 ```
+
+`test-data.sql` replaces the old deploy-time seed beans: staff users, countries, catalog, suppliers, customers, orders, POs, shipments (multiple lifecycle states), customs records, GRNs, and sample audit rows. Safe to re-run — it truncates application data first. See the header comment in that file for OTP login accounts.
 
 If MySQL is running somewhere other than `localhost:3306`, note the actual host/port — you'll need it for the JDBC connection pool in §5.
 
@@ -91,7 +94,7 @@ In this repo, every variable below is defined directly in `docker-compose.yml`'s
 | `AUDIT_TOPIC_CF_JNDI` | `jms/monitoring.audit.log.factory` | Connection factory for the above. |
 | `LOG_TOPIC_JNDI` | `jms/monitoring.trace.log` | JMS Topic for step-by-step trace breadcrumbs (`LogEvent`, see [`TRACE_LOGGING.md`](./TRACE_LOGGING.md)). |
 | `LOG_TOPIC_CF_JNDI` | `jms/monitoring.trace.log.factory` | Connection factory for the above. |
-| `ADMIN_EMAIL` | `admin@globaltradelogistics.local` | Bootstrap ADMIN account email, seeded once by `AdminSeedBean` if `users` is empty. |
+| `ADMIN_EMAIL` | `admin@globaltradelogistics.local` | Matches the bootstrap ADMIN row in `.no-build/db/test-data.sql` (OTP login only — no password column). |
 | `ADMIN_FULL_NAME` | `System Administrator` | Bootstrap ADMIN's full name. |
 
 Since the code defaults already match every value docker-compose sets except `JWT_SECRET`, the minimum you actually need to set is:
@@ -182,12 +185,9 @@ asadmin deploy --force=true "app\target\glolabl-trade-logistics.ear"
 
 `--force=true` lets you redeploy over an existing deployment without an explicit `undeploy` first — use this every time you rebuild after a code change.
 
-**What happens automatically on first deploy** — no manual DB work needed beyond §2's legacy schema load:
-- Hibernate's `hibernate.hbm2ddl.auto=update` creates every table/column this project added on top of the legacy schema (`users`, `otp_codes`, `shipments.purchase_orders_po_id`, etc.) — additive only, never destructive.
-- `AdminSeedBean` inserts the bootstrap ADMIN row (§5's `ADMIN_EMAIL`/`ADMIN_FULL_NAME`) if `users` is empty.
-- `CountrySeedBean` seeds the 45 countries.
-- `CatalogSeedBean` seeds 5 demo products + 1 warehouse + inventory, if `products` is empty.
-- `ShipmentSeedBean` seeds 1 demo shipment, if `shipments` is empty.
+**What happens automatically on first deploy** — no manual DB work needed beyond §2's schema + test-data load:
+- Hibernate's `hibernate.hbm2ddl.auto=update` creates any missing additive columns/tables on top of the legacy schema (`users`, `otp_codes`, `orders.status`, `shipments.purchase_orders_po_id`, etc.) — additive only, never destructive.
+- Demo/reference data comes from `.no-build/db/test-data.sql`, not from Java seed beans.
 
 ---
 
