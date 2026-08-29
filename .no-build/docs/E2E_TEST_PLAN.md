@@ -24,7 +24,7 @@ Manual, browser-driven test plan covering all three frontends (`frontend-custome
    - One ADMIN user: `admin@globaltradelogistics.local` / full name "System Administrator".
    - Catalog: 5 products (Steel Pipe (3m), Industrial Bearing, Hydraulic Hose (5m), Circuit Breaker 32A, Pallet Wrap Roll) all in warehouse `1`, reorder level 20.
    - One demo shipment: id `1`, tracking `TRK-0001`, vessel `VESSEL-ALPHA`, type `SEA`, status `IN_TRANSIT`, warehouse `1`.
-6. To reset to a clean slate between test runs: `docker compose down -v` (drops the Postgres volume) then `docker compose up --build` again.
+6. To reset to a clean slate between test runs: `docker compose down -v` (drops the MySQL volume) then `docker compose up --build` again.
 
 ---
 

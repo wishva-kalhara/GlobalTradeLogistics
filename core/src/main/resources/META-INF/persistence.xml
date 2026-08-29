@@ -27,7 +27,7 @@
         <exclude-unlisted-classes>false</exclude-unlisted-classes>
         <properties>
             <!--
-                The 15 pre-existing SCM tables (schema.postgres.sql) are
+                The 15 pre-existing SCM tables (schema.sql) are
                 treated as a given legacy schema, seeded once via SQL and
                 never touched by Hibernate. Everything WE added on top of it
                 (users, otp_codes, the email-uniqueness constraints) is

@@ -5,9 +5,9 @@ set -euo pipefail
 # variables sourced from .desired-state/db.env and .desired-state/app.env
 # (wired up via docker-compose.yml's env_file directives). Fail fast if
 # required values are missing instead of silently defaulting.
-: "${POSTGRES_DB:?POSTGRES_DB is required (see .desired-state/db.env)}"
-: "${POSTGRES_USER:?POSTGRES_USER is required (see .desired-state/db.env)}"
-: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required (see .desired-state/db.env)}"
+: "${MYSQL_DATABASE:?MYSQL_DATABASE is required (see .desired-state/db.env)}"
+: "${MYSQL_USER:?MYSQL_USER is required (see .desired-state/db.env)}"
+: "${MYSQL_PASSWORD:?MYSQL_PASSWORD is required (see .desired-state/db.env)}"
 : "${DB_HOST:?DB_HOST is required (see .desired-state/app.env)}"
 : "${DB_PORT:?DB_PORT is required (see .desired-state/app.env)}"
 : "${HTTP_PORT:?HTTP_PORT is required (see .desired-state/app.env)}"
@@ -36,20 +36,22 @@ echo "[entrypoint] configuring listeners"
 "${ASADMIN}" set server-config.network-config.network-listeners.network-listener.http-listener-1.port="${HTTP_PORT}"
 "${ASADMIN}" set server-config.network-config.network-listeners.network-listener.http-listener-2.port="${HTTPS_PORT}"
 
-echo "[entrypoint] configuring JDBC connection pool for PostgreSQL (${DB_HOST}:${DB_PORT}/${POSTGRES_DB}, steady=${DB_POOL_MIN_SIZE} max=${DB_POOL_MAX_SIZE})"
-# stringType=unspecified: pgjdbc otherwise binds Java String params as
-# varchar, which Postgres refuses to implicitly assign into native enum
-# columns (e.g. users.role role_type) — "unspecified" lets Postgres infer
-# and cast the target type itself, so JPA's @Enumerated(STRING) just works
-# against enum columns without a custom AttributeConverter.
+echo "[entrypoint] configuring JDBC connection pool for MySQL (${DB_HOST}:${DB_PORT}/${MYSQL_DATABASE}, steady=${DB_POOL_MIN_SIZE} max=${DB_POOL_MAX_SIZE})"
+# useSSL=false + allowPublicKeyRetrieval=true: this dev container's MySQL
+# isn't configured with TLS certs, and its default auth plugin
+# (caching_sha2_password) needs the server's RSA public key up front unless
+# the connection is already encrypted — both are dev-only conveniences, not
+# something to carry into a real deployment. serverTimezone=UTC avoids
+# Connector/J's "unable to determine time zone" failure when the container's
+# system timezone isn't explicitly set.
 if ! "${ASADMIN}" list-jdbc-connection-pools | grep -q "^${POOL_NAME}$"; then
   "${ASADMIN}" create-jdbc-connection-pool \
-    --datasourceclassname org.postgresql.ds.PGSimpleDataSource \
+    --datasourceclassname com.mysql.cj.jdbc.MysqlDataSource \
     --restype javax.sql.DataSource \
     --steadypoolsize "${DB_POOL_MIN_SIZE}" \
     --maxpoolsize "${DB_POOL_MAX_SIZE}" \
     --maxwait "${DB_POOL_MAX_WAIT_MS}" \
-    --property "serverName=${DB_HOST}:portNumber=${DB_PORT}:databaseName=${POSTGRES_DB}:user=${POSTGRES_USER}:password=${POSTGRES_PASSWORD}:stringType=unspecified" \
+    --property "serverName=${DB_HOST}:port=${DB_PORT}:databaseName=${MYSQL_DATABASE}:user=${MYSQL_USER}:password=${MYSQL_PASSWORD}:useSSL=false:allowPublicKeyRetrieval=true:serverTimezone=UTC" \
     "${POOL_NAME}"
 fi
 

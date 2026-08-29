@@ -39,9 +39,9 @@ RUN set -a && . /tmp/versions.env && set +a \
     && unzip -q /tmp/glassfish.zip -d /opt \
     && mv /opt/glassfish7 "${GLASSFISH_HOME}" 2>/dev/null || true \
     && rm -f /tmp/glassfish.zip \
-    # PostgreSQL JDBC driver, so the app can reach the database container
-    && curl -fSL "https://repo1.maven.org/maven2/org/postgresql/postgresql/${POSTGRESQL_JDBC_VERSION}/postgresql-${POSTGRESQL_JDBC_VERSION}.jar" \
-       -o "${GLASSFISH_HOME}/glassfish/domains/domain1/lib/postgresql-jdbc.jar" \
+    # MySQL JDBC driver (Connector/J), so the app can reach the database container
+    && curl -fSL "https://repo1.maven.org/maven2/com/mysql/mysql-connector-j/${MYSQL_JDBC_VERSION}/mysql-connector-j-${MYSQL_JDBC_VERSION}.jar" \
+       -o "${GLASSFISH_HOME}/glassfish/domains/domain1/lib/mysql-jdbc.jar" \
     && rm -f /tmp/versions.env
 
 COPY --from=build /workspace/app/target/*.ear /opt/deploy/global-trade-logistics.ear

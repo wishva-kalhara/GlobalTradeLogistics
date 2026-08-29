@@ -361,7 +361,7 @@ sequenceDiagram
     participant Customs as Browser (frontend-app, CUSTOMS_AGENT)
     participant WM as Browser (frontend-app, WAREHOUSE_MANAGER)
     participant GW as api-gateway
-    participant DB as Postgres
+    participant DB as MySQL
 
     Seller->>GW: POST /v1/suppliers/me/products {productId, warehouseId, leadTimeInDays}
     GW->>DB: INSERT supplier_providing_products
@@ -419,7 +419,7 @@ sequenceDiagram
     participant Cust as Browser (frontend-customer)
     participant Staff as Browser (frontend-app, ADMIN/COORDINATOR)
     participant GW as api-gateway
-    participant DB as Postgres
+    participant DB as MySQL
 
     Cust->>GW: GET /v1/products
     GW->>DB: SELECT products + best inventory row
@@ -459,7 +459,7 @@ sequenceDiagram
     participant Agent as Browser (frontend-app, CUSTOMS_AGENT)
     participant GW as api-gateway
     participant LS as logistics-svc
-    participant DB as Postgres
+    participant DB as MySQL
 
     Agent->>GW: GET /v1/shipments
     GW-->>Agent: [shipment dropdown populated]
