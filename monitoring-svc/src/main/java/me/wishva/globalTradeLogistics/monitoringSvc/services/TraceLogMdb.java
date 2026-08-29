@@ -14,10 +14,8 @@ import java.util.logging.Logger;
 /**
  * Consumes {@link LogEvent}s forwarded by {@link LogsObserver} and prints
  * them — this is a live tail for prod debugging, not a durable record.
- * Deliberately does NOT write to the {@code logs} table (unlike
- * {@code IdempotencyRecorderMdb}, which legitimately owns rows there): a
- * TRACE line fired on every step of every flow would flood that table, and
- * nothing here needs to survive a restart.
+ * Nothing here is written to the database; trace lines exist only in
+ * {@code server.log} under the {@code TRACE} logger name.
  * <p>
  * The JNDI name below must stay in sync with
  * {@link me.wishva.globalTradeLogistics.core.configs.AppConfig#LOG_TOPIC_JNDI}'s

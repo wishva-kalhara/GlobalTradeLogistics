@@ -213,23 +213,6 @@ ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `global_trade_log_corp`.`logs`
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `global_trade_log_corp`.`logs` (
-  `created_at` INT NOT NULL,
-  `idempotency_key` VARCHAR(45) NOT NULL,
-  `log_level` VARCHAR(45) NOT NULL,
-  `messages` VARCHAR(45) NOT NULL,
-  `class_name` VARCHAR(45) NOT NULL,
-  `method_name` VARCHAR(45) NOT NULL,
-  `file_name` VARCHAR(45) NOT NULL,
-  `line_nuber` VARCHAR(45) NOT NULL,
-  `thread_name` VARCHAR(45) NOT NULL,
-  PRIMARY KEY (`created_at`, `idempotency_key`))
-ENGINE = InnoDB;
-
-
--- -----------------------------------------------------
 -- Table `global_trade_log_corp`.`shipments`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `global_trade_log_corp`.`shipments` (

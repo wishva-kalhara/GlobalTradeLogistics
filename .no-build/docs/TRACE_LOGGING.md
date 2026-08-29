@@ -1,6 +1,6 @@
 # GlobalTrade Logistics — Step-by-Step Trace Logging
 
-Live, request-flow breadcrumbs fired via CDI `Event<LogEvent>` from every layer that touches business code — controllers, EJB services, interceptors, JAX-RS exception mappers, security filters, timer beans, and JMS consumers. This is **not** the durable audit trail (`audit_records`, `@Audited`) and **not** the idempotency store (`logs`, `@IdempotencyChecked`) — it is a tail you can read in `server.log` while a flow is running, without attaching a debugger.
+Live, request-flow breadcrumbs fired via CDI `Event<LogEvent>` from every layer that touches business code — controllers, EJB services, interceptors, JAX-RS exception mappers, security filters, timer beans, and JMS consumers. This is **not** the durable audit trail (`audit_records`, `@Audited`) — it is a tail you can read in `server.log` while a flow is running, without attaching a debugger.
 
 Companion docs: [`ANNOTATIONS.md`](./ANNOTATIONS.md) (interceptors that also emit traces), [`EXCEPTIONS.md`](./EXCEPTIONS.md) (mappers that log before returning 4xx/5xx), [`SETUP_GUIDE.md`](./SETUP_GUIDE.md) (JMS topic provisioning and how to grep the output).
 
@@ -44,7 +44,7 @@ TraceLogMdb (monitoring-svc, @MessageDriven)
 GlassFish server.log  (or `docker compose logs app`)
 ```
 
-Unlike `NotificationPublisher`, `AuditPublisher`, and `IdempotencyPublisher`, trace forwarding is **never gated behind `IS_PROD`** — you want these lines in production when debugging a real incident. `entrypoint.sh` provisions the trace-log JMS topic unconditionally.
+Unlike `NotificationPublisher` and `AuditPublisher`, trace forwarding is **never gated behind `IS_PROD`** — you want these lines in production when debugging a real incident. `entrypoint.sh` provisions the trace-log JMS topic unconditionally.
 
 If JMS forwarding fails, `LogsObserver` logs a warning and **swallows** the error — losing one trace line must never break the business flow that fired it.
 
@@ -71,7 +71,7 @@ Both are read through `core.configs.AppConfig`. Manual GlassFish setup must crea
 | Public read endpoints | Stable resource key (`products-list`, `countries-list`, `healthz`) |
 | Background timers | Timer name (`shipment-status-timer`, `po-overdue-timer`, …) |
 | Idempotency short-circuit | The idempotency key string itself |
-| JMS consumer failure | Consumer id (`notification-mdb`, `audit-mdb`, `idempotency-mdb`) |
+| JMS consumer failure | Consumer id (`notification-mdb`, `audit-mdb`) |
 
 Secured controllers share a private `correlationKey()` helper that reads `CurrentPrincipalHolder.get().getEmail()`, falling back to a resource-specific string when no principal is set.
 
@@ -120,7 +120,6 @@ All five timer beans in [`CRON_JOBS.md`](./CRON_JOBS.md) fire `TRACE` at the sta
 | **`TraceLogMdb`** | Prints every `LogEvent` (the sink — does not fire new events) |
 | **`NotificationMdb`** | `TRACE` on received notification; `WARN` on JMS read failure |
 | **`AuditPersisterMdb`** | `TRACE` on persisting an audit row; `WARN` on JMS read failure |
-| **`IdempotencyRecorderMdb`** | `TRACE` on recording an idempotency key; `WARN` on JMS read failure |
 
 ---
 
@@ -163,10 +162,10 @@ Hit `GET /healthz` and you should see at least:
 |---|---|---|
 | **`LogEvent` / trace logging** | Live step-by-step tail for debugging | No — printed only |
 | **`@Audited` / `AuditEvent`** | Durable record of successful business actions | Yes — `audit_records` (via `AuditPersisterMdb` when consumers are active) |
-| **`@IdempotencyChecked` / `IdempotencyEvent`** | Durable "have I seen this key?" store | Yes — `logs` (via `IdempotencyRecorderMdb` when consumers are active) |
+| **`@IdempotencyChecked` / `IdempotencyKeyRegistry`** | In-memory duplicate-call short-circuit | No — process lifetime only, resets on restart |
 | **`java.util.logging` (`LOG.info`, `Level.SEVERE`)** | Container/infrastructure errors (`SupplyChainSystemExceptionMapper`, JMS read failures) | GlassFish log files only |
 
-Do not use `LogEvent` for audit compliance or idempotency — those concerns already have their own tables and interceptors.
+Do not use `LogEvent` for audit compliance — that concern already has its own table and interceptor.
 
 ---
 

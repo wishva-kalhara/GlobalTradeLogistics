@@ -255,12 +255,11 @@ Record goods received for a delivered, customs-cleared shipment — the last ste
 
 ### `PUT /shipments/{shipmentId}/status` 🔒
 - **Body**: `{ "status": "CREATED|IN_TRANSIT|DELIVERED|DELAYED", "idempotencyKey": "string" }` — both required, `idempotencyKey` non-blank. `COMPLETED` is **not** a settable value here — see 409 below.
-- **200**: `ShipmentSummary` reflecting the new status. If the exact same `idempotencyKey` had already been processed, the interceptor short-circuits the write and the endpoint transparently re-fetches and returns the shipment's current state instead (see caveat below).
+- **200**: `ShipmentSummary` reflecting the new status. If the exact same `idempotencyKey` had already been processed in this JVM lifetime, the interceptor short-circuits the write and the endpoint transparently re-fetches and returns the shipment's current state instead.
 - **400**: missing field, or `status` isn't a valid `ShipmentStatus` value.
 - **403**: caller isn't `CUSTOMS_AGENT`.
 - **404**: shipment not found.
 - **409**: `status` was `COMPLETED` (`InvalidShipmentStateException`) — that status is set automatically by `POST /shipments/{shipmentId}/grn`, never directly.
-- **Idempotency caveat**: the durable "have I seen this key" store (`logs` table) is only populated once `monitoring-svc`'s consumer is active under `IS_PROD=true`. Under the default dev config (`IS_PROD=false`), reusing a key does **not** actually prevent a second write — this is a known, documented gap, not a defect in this endpoint.
 
 ### `POST /shipments/{shipmentId}/customs` 🔒
 Creates a new customs clearance record, starting at `PENDING`.

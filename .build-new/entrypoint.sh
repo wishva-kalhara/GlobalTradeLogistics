@@ -24,8 +24,6 @@ set -euo pipefail
 : "${NOTIFICATION_TOPIC_JNDI:?NOTIFICATION_TOPIC_JNDI is required (see .desired-state/glassfish.conf)}"
 : "${AUDIT_TOPIC_CF_JNDI:?AUDIT_TOPIC_CF_JNDI is required (see .desired-state/glassfish.conf)}"
 : "${AUDIT_TOPIC_JNDI:?AUDIT_TOPIC_JNDI is required (see .desired-state/glassfish.conf)}"
-: "${IDEMPOTENCY_QUEUE_CF_JNDI:?IDEMPOTENCY_QUEUE_CF_JNDI is required (see .desired-state/glassfish.conf)}"
-: "${IDEMPOTENCY_QUEUE_JNDI:?IDEMPOTENCY_QUEUE_JNDI is required (see .desired-state/glassfish.conf)}"
 : "${LOG_TOPIC_CF_JNDI:?LOG_TOPIC_CF_JNDI is required (see .desired-state/glassfish.conf)}"
 : "${LOG_TOPIC_JNDI:?LOG_TOPIC_JNDI is required (see .desired-state/glassfish.conf)}"
 
@@ -78,21 +76,13 @@ fi
 
 # Phase 6 (monitoring-svc): audit trail Topic + idempotency-check Queue,
 # same idempotent asadmin pattern as the notification topic above.
-echo "[entrypoint] configuring JMS monitoring resources (${AUDIT_TOPIC_JNDI}, ${IDEMPOTENCY_QUEUE_JNDI})"
+echo "[entrypoint] configuring JMS monitoring resources (${AUDIT_TOPIC_JNDI}, ${LOG_TOPIC_JNDI})"
 if ! "${ASADMIN}" list-jms-resources | grep -q "^${AUDIT_TOPIC_CF_JNDI}$"; then
   "${ASADMIN}" create-jms-resource --restype jakarta.jms.ConnectionFactory "${AUDIT_TOPIC_CF_JNDI}"
 fi
 
 if ! "${ASADMIN}" list-jms-resources | grep -q "^${AUDIT_TOPIC_JNDI}$"; then
   "${ASADMIN}" create-jms-resource --restype jakarta.jms.Topic --property Name=monitoring.audit.log "${AUDIT_TOPIC_JNDI}"
-fi
-
-if ! "${ASADMIN}" list-jms-resources | grep -q "^${IDEMPOTENCY_QUEUE_CF_JNDI}$"; then
-  "${ASADMIN}" create-jms-resource --restype jakarta.jms.ConnectionFactory "${IDEMPOTENCY_QUEUE_CF_JNDI}"
-fi
-
-if ! "${ASADMIN}" list-jms-resources | grep -q "^${IDEMPOTENCY_QUEUE_JNDI}$"; then
-  "${ASADMIN}" create-jms-resource --restype jakarta.jms.Queue --property Name=monitoring.idempotency.check "${IDEMPOTENCY_QUEUE_JNDI}"
 fi
 
 # Trace-log Topic: LogsObserver (CDI observer, monitoring-svc) forwards every

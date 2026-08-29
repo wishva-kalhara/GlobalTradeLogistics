@@ -23,7 +23,6 @@
         <class>me.wishva.globalTradeLogistics.core.model.AuditRecord</class>
         <class>me.wishva.globalTradeLogistics.core.model.Shipment</class>
         <class>me.wishva.globalTradeLogistics.core.model.CustomClearanceRecord</class>
-        <class>me.wishva.globalTradeLogistics.core.model.LogEntry</class>
         <exclude-unlisted-classes>false</exclude-unlisted-classes>
         <properties>
             <!--

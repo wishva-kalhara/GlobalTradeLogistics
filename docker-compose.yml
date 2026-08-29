@@ -54,8 +54,6 @@ services:
       NOTIFICATION_TOPIC_JNDI: jms/notification.email.send
       AUDIT_TOPIC_CF_JNDI: jms/monitoring.audit.log.factory
       AUDIT_TOPIC_JNDI: jms/monitoring.audit.log
-      IDEMPOTENCY_QUEUE_CF_JNDI: jms/monitoring.idempotency.check.factory
-      IDEMPOTENCY_QUEUE_JNDI: jms/monitoring.idempotency.check
       LOG_TOPIC_CF_JNDI: jms/monitoring.trace.log.factory
       LOG_TOPIC_JNDI: jms/monitoring.trace.log
       # SMTP account notification-svc sends templated HTML emails through

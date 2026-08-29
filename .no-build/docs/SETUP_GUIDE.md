@@ -84,13 +84,11 @@ In this repo, every variable below is defined directly in `docker-compose.yml`'s
 | Variable | Default (if unset) | Used for |
 |---|---|---|
 | `JWT_SECRET` | *(none — required)* | HS256 signing secret for issued JWTs (`JwtService`). Any non-blank string works for local dev — e.g. `dev-only-change-me-globaltradelogistics-jwt-secret` (the repo's own dev value, from `docker-compose.yml`). |
-| `IS_PROD` | `false` | `false` = `NotificationPublisher` logs emails instead of sending them, and durable idempotency-key tracking is inactive (see `EXCEPTIONS.md`'s idempotency caveat). Leave `false` for local dev. |
+| `IS_PROD` | `false` | `false` = `NotificationPublisher` logs emails instead of sending them. Leave `false` for local dev. |
 | `NOTIFICATION_TOPIC_JNDI` | `jms/notification.email.send` | JMS Topic name for outbound email notifications. |
 | `NOTIFICATION_TOPIC_CF_JNDI` | `jms/notification.email.send.factory` | Connection factory for the above. |
 | `AUDIT_TOPIC_JNDI` | `jms/monitoring.audit.log` | JMS Topic for the audit trail (`@Audited`, see `ANNOTATIONS.md`). |
 | `AUDIT_TOPIC_CF_JNDI` | `jms/monitoring.audit.log.factory` | Connection factory for the above. |
-| `IDEMPOTENCY_QUEUE_JNDI` | `jms/monitoring.idempotency.check` | JMS Queue for durable idempotency-key tracking (`@IdempotencyChecked`). |
-| `IDEMPOTENCY_QUEUE_CF_JNDI` | `jms/monitoring.idempotency.check.factory` | Connection factory for the above. |
 | `LOG_TOPIC_JNDI` | `jms/monitoring.trace.log` | JMS Topic for step-by-step trace breadcrumbs (`LogEvent`, see [`TRACE_LOGGING.md`](./TRACE_LOGGING.md)). |
 | `LOG_TOPIC_CF_JNDI` | `jms/monitoring.trace.log.factory` | Connection factory for the above. |
 | `ADMIN_EMAIL` | `admin@globaltradelogistics.local` | Bootstrap ADMIN account email, seeded once by `AdminSeedBean` if `users` is empty. |
@@ -166,10 +164,6 @@ asadmin create-jms-resource --restype jakarta.jms.Topic --property Name=notifica
 # Audit-log topic (monitoring-svc)
 asadmin create-jms-resource --restype jakarta.jms.ConnectionFactory jms/monitoring.audit.log.factory
 asadmin create-jms-resource --restype jakarta.jms.Topic --property Name=monitoring.audit.log jms/monitoring.audit.log
-
-# Idempotency-check queue (monitoring-svc)
-asadmin create-jms-resource --restype jakarta.jms.ConnectionFactory jms/monitoring.idempotency.check.factory
-asadmin create-jms-resource --restype jakarta.jms.Queue --property Name=monitoring.idempotency.check jms/monitoring.idempotency.check
 
 # Trace-log topic (monitoring-svc — LogEvent live tail, always active)
 asadmin create-jms-resource --restype jakarta.jms.ConnectionFactory jms/monitoring.trace.log.factory

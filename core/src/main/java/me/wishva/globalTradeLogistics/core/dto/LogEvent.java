@@ -16,8 +16,8 @@ import java.time.Instant;
  * way to see what a flow was doing in prod without a debugger attached.
  * <p>
  * Deliberately not persisted anywhere (see {@code TraceLogMdb}) — this is a
- * live tail, not an audit trail; {@code AuditEvent}/{@code IdempotencyEvent}
- * already own "durably recorded."
+ * live tail, not an audit trail; {@code AuditEvent} owns durable business-action
+ * recording.
  */
 @Getter
 @Setter

@@ -337,7 +337,7 @@ This is the flow [`E2E_TEST_FLOW.md`](./E2E_TEST_FLOW.md) walks through in full 
 ## 8. Environment-Dependent Notes (not defects)
 
 - **Vendor Performance Report** (TC-A08) is expected to be empty under the default `IS_PROD=false` dev configuration — the weekly recompute timer's audit trail only becomes durable once `monitoring-svc`'s consumer is active in a `IS_PROD=true` deployment.
-- **Idempotency key reuse** on `PUT /shipments/{id}/status`: submitting the exact same `idempotencyKey` twice does not currently short-circuit the second call under the default dev config, for the same `IS_PROD=false` reason above. Not testable as a "duplicate is ignored" behavior in the UI today (the UI always generates a fresh key per click anyway, so this is only reachable via manual devtools replay).
+- **Idempotency key reuse** on `PUT /shipments/{id}/status`: submitting the exact same `idempotencyKey` twice in the same JVM session short-circuits the second call — the UI always generates a fresh UUID per click, so this is only reachable via manual devtools replay.
 - **Notification emails**: nothing is actually sent (Mailtrap integration is pending credentials) — every "onboarding email queued" success message reflects a queued/logged notification, not a delivered email. Confirming actual delivery is out of scope until that's wired up.
 
 ---

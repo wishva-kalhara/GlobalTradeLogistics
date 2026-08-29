@@ -1,26 +1,21 @@
 package me.wishva.globalTradeLogistics.core.interceptor;
 
+import jakarta.enterprise.event.Event;
+import jakarta.inject.Inject;
 import jakarta.interceptor.AroundInvoke;
 import jakarta.interceptor.InvocationContext;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import me.wishva.globalTradeLogistics.core.dto.IdempotencyEvent;
-import me.wishva.globalTradeLogistics.core.messaging.IdempotencyPublisher;
+import me.wishva.globalTradeLogistics.core.dto.LogEvent;
+import me.wishva.globalTradeLogistics.core.enums.LogLevel;
+import me.wishva.globalTradeLogistics.core.idempotency.IdempotencyKeyRegistry;
 
 import java.lang.reflect.Method;
 
 /**
  * Enforces {@link IdempotencyChecked}: a synchronous fast-path check against
- * {@code logs} (via {@code LogEntry.countByIdempotencyKey}) before letting
- * the business method run — if the key has already been recorded, the call
- * short-circuits with no further writes. On first-seen keys, proceeds and
- * then asynchronously publishes an {@link IdempotencyEvent} (via
- * {@link IdempotencyPublisher}) so {@code monitoring-svc} (Phase 6) can
- * durably record it.
- * <p>
- * Interceptor classes support the same resource injection as the managed
- * bean they're bound to, so {@code @PersistenceContext} here is populated
- * from whichever EJB this interceptor is attached to.
+ * {@link IdempotencyKeyRegistry} before letting the business method run — if
+ * the key has already been recorded, the call short-circuits with no further
+ * writes. On first-seen keys, proceeds and records the key in the registry
+ * after a successful return.
  * <p>
  * Runs <em>before</em> {@link AuditInterceptor} when both are listed in a
  * bean's {@code @Interceptors}, per {@code IdempotencyChecked}/{@code Audited}
@@ -31,8 +26,10 @@ import java.lang.reflect.Method;
  */
 public class IdempotencyInterceptor {
 
-    @PersistenceContext(unitName = "globalTradeLogisticsPU")
-    private EntityManager em;
+    private final IdempotencyKeyRegistry idempotencyKeys = IdempotencyKeyRegistry.getInstance();
+
+    @Inject
+    private Event<LogEvent> logEvent;
 
     @AroundInvoke
     public Object checkIdempotency(InvocationContext context) throws Exception {
@@ -44,17 +41,14 @@ public class IdempotencyInterceptor {
         Object[] params = context.getParameters();
         String idempotencyKey = (String) params[params.length - 1];
 
-        long alreadySeen = em.createNamedQuery("LogEntry.countByIdempotencyKey", Long.class)
-                .setParameter("idempotencyKey", idempotencyKey)
-                .getSingleResult();
-        if (alreadySeen > 0) {
+        if (idempotencyKeys.hasSeen(idempotencyKey)) {
+            logEvent.fire(new LogEvent(idempotencyKey, LogLevel.TRACE,
+                    "IdempotencyInterceptor: short-circuiting duplicate key for " + method.getName()));
             return null;
         }
 
         Object result = context.proceed();
-        // Simple name, not getName()'s fully-qualified form — logs.class_name
-        // is a legacy VARCHAR(45) that a package-qualified name would overflow.
-        IdempotencyPublisher.publish(new IdempotencyEvent(idempotencyKey, method.getDeclaringClass().getSimpleName(), method.getName()));
+        idempotencyKeys.record(idempotencyKey);
         return result;
     }
 }

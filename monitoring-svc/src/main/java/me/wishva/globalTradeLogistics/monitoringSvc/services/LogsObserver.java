@@ -22,9 +22,8 @@ import java.util.logging.Logger;
  * {@link me.wishva.globalTradeLogistics.core.configs.AppConfig#LOG_TOPIC_JNDI}
  * for {@code TraceLogMdb} to print.
  * <p>
- * Unlike {@code AuditPublisher}/{@code NotificationPublisher}/
- * {@code IdempotencyPublisher}, this is not gated behind {@code IS_PROD} —
- * step-by-step tracing is exactly what's needed to debug a real prod issue,
+ * Unlike {@code AuditPublisher}/{@code NotificationPublisher}, this is not
+ * gated behind {@code IS_PROD} — step-by-step tracing is exactly what's needed to debug a real prod issue,
  * so it always forwards. The JMS resources are provisioned unconditionally
  * by {@code entrypoint.sh} regardless of {@code IS_PROD}, so the lookup
  * always succeeds; a failure is logged and swallowed rather than thrown,
