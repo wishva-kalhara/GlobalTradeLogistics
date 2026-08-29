@@ -59,6 +59,19 @@ public final class AppConfig {
     public static final String ADMIN_EMAIL = optional("ADMIN_EMAIL", "admin@globaltradelogistics.local");
     public static final String ADMIN_FULL_NAME = optional("ADMIN_FULL_NAME", "System Administrator");
 
+    /**
+     * SMTP settings notification-svc uses to actually send the templated
+     * HTML emails consumed off {@link #NOTIFICATION_TOPIC_JNDI}. Only
+     * exercised when {@link #IS_PROD} is true (see {@code NotificationPublisher}),
+     * so these default to blank/harmless values rather than {@code require()}-ing
+     * them — a local/dev run with {@code IS_PROD=false} never touches SMTP at all.
+     */
+    public static final String SMTP_HOST = optional("SMTP_HOST", "");
+    public static final String SMTP_PORT = optional("SMTP_PORT", "587");
+    public static final boolean SMTP_AUTH = Boolean.parseBoolean(optional("SMTP_AUTH", "true"));
+    public static final String SMTP_EMAIL = optional("SMTP_EMAIL", "");
+    public static final String SMTP_PASSWORD = optional("SMTP_PASSWORD", "");
+
     private AppConfig() {
     }
 
