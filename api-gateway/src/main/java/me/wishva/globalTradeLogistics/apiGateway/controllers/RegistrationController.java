@@ -1,6 +1,8 @@
 package me.wishva.globalTradeLogistics.apiGateway.controllers;
 
 import jakarta.ejb.EJB;
+import jakarta.enterprise.event.Event;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.POST;
@@ -11,6 +13,8 @@ import me.wishva.globalTradeLogistics.apiGateway.dto.AuthResponseBody;
 import me.wishva.globalTradeLogistics.apiGateway.dto.SignUpCustomerBody;
 import me.wishva.globalTradeLogistics.apiGateway.dto.SignUpSupplierBody;
 import me.wishva.globalTradeLogistics.core.dto.AuthResult;
+import me.wishva.globalTradeLogistics.core.dto.LogEvent;
+import me.wishva.globalTradeLogistics.core.enums.LogLevel;
 import me.wishva.globalTradeLogistics.core.exception.EmailAlreadyRegisteredException;
 import me.wishva.globalTradeLogistics.core.local.IRegistrationService;
 
@@ -29,10 +33,16 @@ public class RegistrationController {
     @EJB
     private IRegistrationService registrationService;
 
+    @Inject
+    private Event<LogEvent> logEvent;
+
     @POST
     @Path("/customer")
     public AuthResponseBody signUpCustomer(SignUpCustomerBody body) throws EmailAlreadyRegisteredException {
+        String email = body != null ? body.getEmail() : null;
+        logEvent.fire(new LogEvent(email != null ? email : "signup-customer", LogLevel.TRACE, "POST /auth/signup/customer"));
         if (body == null || body.getEmail() == null || body.getCountry() == null) {
+            logEvent.fire(new LogEvent("signup-customer", LogLevel.WARN, "signUpCustomer: email and country are required"));
             throw new BadRequestException("email and country are required");
         }
 
@@ -43,7 +53,10 @@ public class RegistrationController {
     @POST
     @Path("/supplier")
     public AuthResponseBody signUpSupplier(SignUpSupplierBody body) throws EmailAlreadyRegisteredException {
+        String email = body != null ? body.getEmail() : null;
+        logEvent.fire(new LogEvent(email != null ? email : "signup-supplier", LogLevel.TRACE, "POST /auth/signup/supplier"));
         if (body == null || body.getEmail() == null || body.getCountry() == null) {
+            logEvent.fire(new LogEvent("signup-supplier", LogLevel.WARN, "signUpSupplier: email and country are required"));
             throw new BadRequestException("email and country are required");
         }
 

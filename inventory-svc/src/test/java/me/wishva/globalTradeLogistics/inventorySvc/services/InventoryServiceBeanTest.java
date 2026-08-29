@@ -1,5 +1,6 @@
 package me.wishva.globalTradeLogistics.inventorySvc.services;
 
+import jakarta.enterprise.event.Event;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 import me.wishva.globalTradeLogistics.core.exception.InsufficientInventoryException;
@@ -31,6 +32,10 @@ class InventoryServiceBeanTest {
         Field field = InventoryServiceBean.class.getDeclaredField("em");
         field.setAccessible(true);
         field.set(bean, em);
+
+        Field logEventField = InventoryServiceBean.class.getDeclaredField("logEvent");
+        logEventField.setAccessible(true);
+        logEventField.set(bean, mock(Event.class));
     }
 
     @SuppressWarnings("unchecked")

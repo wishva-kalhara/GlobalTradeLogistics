@@ -1,6 +1,8 @@
 package me.wishva.globalTradeLogistics.apiGateway.controllers;
 
 import jakarta.ejb.EJB;
+import jakarta.enterprise.event.Event;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
@@ -16,9 +18,11 @@ import me.wishva.globalTradeLogistics.apiGateway.dto.RecordGrnBody;
 import me.wishva.globalTradeLogistics.apiGateway.dto.UpdateCustomsStatusBody;
 import me.wishva.globalTradeLogistics.apiGateway.dto.UpdateShipmentStatusBody;
 import me.wishva.globalTradeLogistics.apiGateway.security.Secured;
+import me.wishva.globalTradeLogistics.core.dto.LogEvent;
 import me.wishva.globalTradeLogistics.core.dto.PurchaseOrderSummary;
 import me.wishva.globalTradeLogistics.core.dto.ShipmentSummary;
 import me.wishva.globalTradeLogistics.core.enums.CustomsClearanceStatus;
+import me.wishva.globalTradeLogistics.core.enums.LogLevel;
 import me.wishva.globalTradeLogistics.core.enums.ShipmentStatus;
 import me.wishva.globalTradeLogistics.core.exception.InvalidShipmentStateException;
 import me.wishva.globalTradeLogistics.core.exception.PurchaseOrderNotFoundException;
@@ -27,6 +31,8 @@ import me.wishva.globalTradeLogistics.core.exception.UnauthorizedAccessException
 import me.wishva.globalTradeLogistics.core.exception.UnknownPrincipalException;
 import me.wishva.globalTradeLogistics.core.local.IPurchaseOrderService;
 import me.wishva.globalTradeLogistics.core.local.IShipmentService;
+import me.wishva.globalTradeLogistics.core.security.CurrentPrincipal;
+import me.wishva.globalTradeLogistics.core.security.CurrentPrincipalHolder;
 
 import java.util.List;
 
@@ -53,20 +59,26 @@ public class ShipmentController {
     @EJB
     private IPurchaseOrderService purchaseOrderService;
 
+    @Inject
+    private Event<LogEvent> logEvent;
+
     @GET
     public List<ShipmentSummary> listAll() throws UnauthorizedAccessException {
+        logEvent.fire(new LogEvent(correlationKey(), LogLevel.TRACE, "GET /shipments"));
         return shipmentService.listAll();
     }
 
     @GET
     @Path("/mine")
     public List<ShipmentSummary> listForSupplier() throws UnauthorizedAccessException, UnknownPrincipalException {
+        logEvent.fire(new LogEvent(correlationKey(), LogLevel.TRACE, "GET /shipments/mine"));
         return shipmentService.listForSupplier();
     }
 
     @GET
     @Path("/awaiting-grn")
     public List<ShipmentSummary> listDeliveredAwaitingGrn() throws UnauthorizedAccessException {
+        logEvent.fire(new LogEvent(correlationKey(), LogLevel.TRACE, "GET /shipments/awaiting-grn"));
         return shipmentService.listDeliveredAwaitingGrn();
     }
 
@@ -74,7 +86,9 @@ public class ShipmentController {
     @Path("/{shipmentId}/grn")
     public PurchaseOrderSummary recordGrn(@PathParam("shipmentId") Integer shipmentId, RecordGrnBody body)
             throws ShipmentNotFoundException, PurchaseOrderNotFoundException, InvalidShipmentStateException, UnauthorizedAccessException {
+        logEvent.fire(new LogEvent(correlationKey(), LogLevel.TRACE, "POST /shipments/" + shipmentId + "/grn"));
         if (body == null || body.getQty() == null || body.getQty() <= 0) {
+            logEvent.fire(new LogEvent(correlationKey(), LogLevel.WARN, "recordGrn: a positive qty is required"));
             throw new BadRequestException("A positive qty is required");
         }
         return purchaseOrderService.recordGrnForShipment(shipmentId, body.getQty());
@@ -83,6 +97,7 @@ public class ShipmentController {
     @GET
     @Path("/{shipmentId}")
     public ShipmentSummary getShipment(@PathParam("shipmentId") Integer shipmentId) throws ShipmentNotFoundException {
+        logEvent.fire(new LogEvent(correlationKey(), LogLevel.TRACE, "GET /shipments/" + shipmentId));
         return shipmentService.getShipment(shipmentId);
     }
 
@@ -90,7 +105,9 @@ public class ShipmentController {
     @Path("/{shipmentId}/status")
     public ShipmentSummary updateStatus(@PathParam("shipmentId") Integer shipmentId, UpdateShipmentStatusBody body)
             throws ShipmentNotFoundException, InvalidShipmentStateException, UnauthorizedAccessException {
+        logEvent.fire(new LogEvent(correlationKey(), LogLevel.TRACE, "PUT /shipments/" + shipmentId + "/status"));
         if (body == null || body.getStatus() == null || body.getIdempotencyKey() == null || body.getIdempotencyKey().isBlank()) {
+            logEvent.fire(new LogEvent(correlationKey(), LogLevel.WARN, "updateStatus: status and idempotencyKey are required"));
             throw new BadRequestException("status and idempotencyKey are required");
         }
 
@@ -98,6 +115,7 @@ public class ShipmentController {
         try {
             status = ShipmentStatus.valueOf(body.getStatus());
         } catch (IllegalArgumentException e) {
+            logEvent.fire(new LogEvent(correlationKey(), LogLevel.WARN, "updateStatus: unknown status " + body.getStatus()));
             throw new BadRequestException("Unknown status: " + body.getStatus());
         }
 
@@ -111,6 +129,7 @@ public class ShipmentController {
     @Path("/{shipmentId}/customs")
     public Response createCustomsRecord(@PathParam("shipmentId") Integer shipmentId, CreateCustomsRecordBody body)
             throws ShipmentNotFoundException, UnauthorizedAccessException {
+        logEvent.fire(new LogEvent(correlationKey(), LogLevel.TRACE, "POST /shipments/" + shipmentId + "/customs"));
         String declarationNumber = body != null ? body.getDeclarationNumber() : null;
         shipmentService.createCustomsRecord(shipmentId, declarationNumber);
         return Response.status(Response.Status.CREATED).build();
@@ -120,7 +139,9 @@ public class ShipmentController {
     @Path("/{shipmentId}/customs/status")
     public ShipmentSummary updateCustomsStatus(@PathParam("shipmentId") Integer shipmentId, UpdateCustomsStatusBody body)
             throws ShipmentNotFoundException, InvalidShipmentStateException, UnauthorizedAccessException {
+        logEvent.fire(new LogEvent(correlationKey(), LogLevel.TRACE, "PUT /shipments/" + shipmentId + "/customs/status"));
         if (body == null || body.getStatus() == null) {
+            logEvent.fire(new LogEvent(correlationKey(), LogLevel.WARN, "updateCustomsStatus: status is required"));
             throw new BadRequestException("status is required");
         }
 
@@ -128,6 +149,7 @@ public class ShipmentController {
         try {
             status = CustomsClearanceStatus.valueOf(body.getStatus());
         } catch (IllegalArgumentException e) {
+            logEvent.fire(new LogEvent(correlationKey(), LogLevel.WARN, "updateCustomsStatus: unknown status " + body.getStatus()));
             throw new BadRequestException("Unknown status: " + body.getStatus());
         }
 
@@ -137,6 +159,12 @@ public class ShipmentController {
     @POST
     @Path("/{shipmentId}/notify-carrier")
     public ShipmentSummary notifyCarrierSystem(@PathParam("shipmentId") Integer shipmentId) throws ShipmentNotFoundException {
+        logEvent.fire(new LogEvent(correlationKey(), LogLevel.TRACE, "POST /shipments/" + shipmentId + "/notify-carrier"));
         return shipmentService.notifyCarrierSystem(shipmentId);
+    }
+
+    private static String correlationKey() {
+        CurrentPrincipal principal = CurrentPrincipalHolder.get();
+        return principal != null ? principal.getEmail() : "shipments";
     }
 }

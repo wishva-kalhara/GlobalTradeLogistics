@@ -2,12 +2,16 @@ package me.wishva.globalTradeLogistics.iamSvc.services;
 
 import jakarta.ejb.EJB;
 import jakarta.ejb.Stateless;
+import jakarta.enterprise.event.Event;
+import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import me.wishva.globalTradeLogistics.core.configs.AppConfig;
 import me.wishva.globalTradeLogistics.core.dto.AuthResult;
 import me.wishva.globalTradeLogistics.core.dto.EmailNotification;
+import me.wishva.globalTradeLogistics.core.dto.LogEvent;
 import me.wishva.globalTradeLogistics.core.enums.EmailType;
+import me.wishva.globalTradeLogistics.core.enums.LogLevel;
 import me.wishva.globalTradeLogistics.core.enums.Role;
 import me.wishva.globalTradeLogistics.core.exception.OtpExpiredOrInvalidException;
 import me.wishva.globalTradeLogistics.core.exception.UnknownPrincipalException;
@@ -37,25 +41,34 @@ public class UserServiceBean implements IUsersService {
     @EJB
     private OtpServiceBean otpService;
 
+    @Inject
+    private Event<LogEvent> logEvent;
+
     @Override
     public void requestOtp(String email) throws UnknownPrincipalException {
+        logEvent.fire(new LogEvent(email, LogLevel.TRACE, "requestOtp: resolving role for " + email));
         resolveRole(email);
 
         String code = otpService.generateAndStore(email);
+        logEvent.fire(new LogEvent(email, LogLevel.TRACE, "requestOtp: OTP generated and stored for " + email));
 
         Map<String, String> params = new HashMap<>();
         params.put("code", code);
         NotificationPublisher.publish(new EmailNotification(EmailType.OTP_AUTHENTICATION, email, null, params));
+        logEvent.fire(new LogEvent(email, LogLevel.TRACE, "requestOtp: OTP_AUTHENTICATION notification published for " + email));
     }
 
     @Override
     public AuthResult verifyOtp(String email, String code) throws OtpExpiredOrInvalidException, UnknownPrincipalException {
+        logEvent.fire(new LogEvent(email, LogLevel.TRACE, "verifyOtp: verifying OTP for " + email));
         if (!otpService.verifyAndConsume(email, code)) {
+            logEvent.fire(new LogEvent(email, LogLevel.WARN, "verifyOtp: invalid or expired OTP for " + email));
             throw new OtpExpiredOrInvalidException("OTP is invalid or expired for " + email);
         }
 
         Role role = resolveRole(email);
         String token = JwtService.issueToken(email, role, AppConfig.JWT_SECRET, TOKEN_TTL_SECONDS);
+        logEvent.fire(new LogEvent(email, LogLevel.TRACE, "verifyOtp: JWT issued for " + email + " with role " + role));
         return new AuthResult(token, email, role);
     }
 
@@ -68,6 +81,7 @@ public class UserServiceBean implements IUsersService {
                 .setParameter("email", email)
                 .getResultList();
         if (!users.isEmpty()) {
+            logEvent.fire(new LogEvent(email, LogLevel.TRACE, "resolveRole: matched staff user, role=" + users.get(0).getRole()));
             return users.get(0).getRole();
         }
 
@@ -75,6 +89,7 @@ public class UserServiceBean implements IUsersService {
                 .setParameter("email", email)
                 .getResultList();
         if (!customers.isEmpty()) {
+            logEvent.fire(new LogEvent(email, LogLevel.TRACE, "resolveRole: matched customer"));
             return Role.CUSTOMER;
         }
 
@@ -82,9 +97,11 @@ public class UserServiceBean implements IUsersService {
                 .setParameter("email", email)
                 .getResultList();
         if (!suppliers.isEmpty()) {
+            logEvent.fire(new LogEvent(email, LogLevel.TRACE, "resolveRole: matched supplier"));
             return Role.VENDOR_REP;
         }
 
+        logEvent.fire(new LogEvent(email, LogLevel.WARN, "resolveRole: no active principal found for " + email));
         throw new UnknownPrincipalException("No active principal found for email " + email);
     }
 }

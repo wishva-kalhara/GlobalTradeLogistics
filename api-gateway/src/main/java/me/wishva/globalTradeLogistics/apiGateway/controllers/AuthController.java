@@ -1,6 +1,8 @@
 package me.wishva.globalTradeLogistics.apiGateway.controllers;
 
 import jakarta.ejb.EJB;
+import jakarta.enterprise.event.Event;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.POST;
@@ -12,6 +14,8 @@ import me.wishva.globalTradeLogistics.apiGateway.dto.AuthResponseBody;
 import me.wishva.globalTradeLogistics.apiGateway.dto.OtpRequestBody;
 import me.wishva.globalTradeLogistics.apiGateway.dto.OtpVerifyBody;
 import me.wishva.globalTradeLogistics.core.dto.AuthResult;
+import me.wishva.globalTradeLogistics.core.dto.LogEvent;
+import me.wishva.globalTradeLogistics.core.enums.LogLevel;
 import me.wishva.globalTradeLogistics.core.exception.OtpExpiredOrInvalidException;
 import me.wishva.globalTradeLogistics.core.exception.UnknownPrincipalException;
 import me.wishva.globalTradeLogistics.core.remote.IUsersService;
@@ -28,12 +32,18 @@ public class AuthController {
     @EJB
     private IUsersService usersService;
 
+    @Inject
+    private Event<LogEvent> logEvent;
+
     @POST
     @Path("/otp/request")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response requestOtp(OtpRequestBody body) throws UnknownPrincipalException {
+        String email = body != null ? body.getEmail() : null;
+        logEvent.fire(new LogEvent(email != null ? email : "otp-request", LogLevel.TRACE, "POST /auth/otp/request"));
         if (body == null || body.getEmail() == null || body.getEmail().isBlank()) {
+            logEvent.fire(new LogEvent("otp-request", LogLevel.WARN, "requestOtp: missing email in request body"));
             return Response.status(Response.Status.BAD_REQUEST).entity(Map.of("error", "email is required")).build();
         }
         usersService.requestOtp(body.getEmail());
@@ -45,8 +55,11 @@ public class AuthController {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public AuthResponseBody verifyOtp(OtpVerifyBody body) throws OtpExpiredOrInvalidException, UnknownPrincipalException {
+        String email = body != null ? body.getEmail() : null;
+        logEvent.fire(new LogEvent(email != null ? email : "otp-verify", LogLevel.TRACE, "POST /auth/otp/verify"));
         if (body == null || body.getEmail() == null || body.getEmail().isBlank()
                 || body.getCode() == null || body.getCode().isBlank()) {
+            logEvent.fire(new LogEvent("otp-verify", LogLevel.WARN, "verifyOtp: missing email or code in request body"));
             throw new BadRequestException("email and code are required");
         }
         AuthResult result = usersService.verifyOtp(body.getEmail(), body.getCode());

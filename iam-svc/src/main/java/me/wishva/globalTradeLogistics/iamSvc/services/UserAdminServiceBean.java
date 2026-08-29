@@ -1,13 +1,17 @@
 package me.wishva.globalTradeLogistics.iamSvc.services;
 
 import jakarta.ejb.Stateless;
+import jakarta.enterprise.event.Event;
+import jakarta.inject.Inject;
 import jakarta.interceptor.Interceptors;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import me.wishva.globalTradeLogistics.core.dto.EmailNotification;
+import me.wishva.globalTradeLogistics.core.dto.LogEvent;
 import me.wishva.globalTradeLogistics.core.dto.SupplierSummary;
 import me.wishva.globalTradeLogistics.core.dto.UserSummary;
 import me.wishva.globalTradeLogistics.core.enums.EmailType;
+import me.wishva.globalTradeLogistics.core.enums.LogLevel;
 import me.wishva.globalTradeLogistics.core.enums.Role;
 import me.wishva.globalTradeLogistics.core.interceptor.RequiresRole;
 import me.wishva.globalTradeLogistics.core.interceptor.RequiresRoleInterceptor;
@@ -37,6 +41,9 @@ public class UserAdminServiceBean implements IUserAdminService {
     @PersistenceContext(unitName = "globalTradeLogisticsPU")
     private EntityManager em;
 
+    @Inject
+    private Event<LogEvent> logEvent;
+
     @Override
     @RequiresRole(Role.ADMIN)
     public void createUser(String email, String fullName, Role role) {
@@ -46,9 +53,11 @@ public class UserAdminServiceBean implements IUserAdminService {
         user.setRole(role);
         user.setActive(true);
         em.persist(user);
+        logEvent.fire(new LogEvent(email, LogLevel.TRACE, "createUser: staff user persisted with role " + role));
 
         NotificationPublisher.publish(new EmailNotification(
                 EmailType.WORKER_ONBOARDING, email, fullName, Map.of("role", role.name())));
+        logEvent.fire(new LogEvent(email, LogLevel.TRACE, "createUser: WORKER_ONBOARDING notification published"));
     }
 
     @Override
@@ -62,9 +71,11 @@ public class UserAdminServiceBean implements IUserAdminService {
         customer.setCountry(country);
         customer.setIsActive("true");
         em.persist(customer);
+        logEvent.fire(new LogEvent(email, LogLevel.TRACE, "registerCustomer: customer persisted"));
 
         NotificationPublisher.publish(new EmailNotification(
                 EmailType.CUSTOMER_ONBOARDING, email, fullName, Collections.emptyMap()));
+        logEvent.fire(new LogEvent(email, LogLevel.TRACE, "registerCustomer: CUSTOMER_ONBOARDING notification published"));
     }
 
     @Override
@@ -78,14 +89,17 @@ public class UserAdminServiceBean implements IUserAdminService {
         supplier.setCountry(country);
         supplier.setIsActive("true");
         em.persist(supplier);
+        logEvent.fire(new LogEvent(email, LogLevel.TRACE, "registerSupplier: supplier persisted"));
 
         NotificationPublisher.publish(new EmailNotification(
                 EmailType.SUPPLIER_ONBOARDING, email, fullName, Collections.emptyMap()));
+        logEvent.fire(new LogEvent(email, LogLevel.TRACE, "registerSupplier: SUPPLIER_ONBOARDING notification published"));
     }
 
     @Override
     @RequiresRole(Role.ADMIN)
     public List<UserSummary> listUsers() {
+        logEvent.fire(new LogEvent("admin-users", LogLevel.TRACE, "listUsers: loading staff users"));
         return em.createNamedQuery("User.findAll", User.class)
                 .getResultList()
                 .stream()
@@ -96,6 +110,7 @@ public class UserAdminServiceBean implements IUserAdminService {
     @Override
     @RequiresRole({Role.ADMIN, Role.COORDINATOR})
     public List<SupplierSummary> listSuppliers() {
+        logEvent.fire(new LogEvent("admin-suppliers", LogLevel.TRACE, "listSuppliers: loading active suppliers"));
         return em.createNamedQuery("Supplier.findAllActive", Supplier.class)
                 .getResultList()
                 .stream()
@@ -107,10 +122,12 @@ public class UserAdminServiceBean implements IUserAdminService {
     @Override
     @RequiresRole({Role.ADMIN, Role.COORDINATOR})
     public List<SupplierSummary> listSuppliersForProduct(Integer productId) {
+        logEvent.fire(new LogEvent("product-" + productId, LogLevel.TRACE, "listSuppliersForProduct: loading suppliers"));
         List<Integer> supplierIds = em.createNamedQuery("SupplierProvidingProduct.findSupplierIdsByProduct", Integer.class)
                 .setParameter("productId", productId)
                 .getResultList();
         if (supplierIds.isEmpty()) {
+            logEvent.fire(new LogEvent("product-" + productId, LogLevel.TRACE, "listSuppliersForProduct: no suppliers offer this product"));
             return Collections.emptyList();
         }
 

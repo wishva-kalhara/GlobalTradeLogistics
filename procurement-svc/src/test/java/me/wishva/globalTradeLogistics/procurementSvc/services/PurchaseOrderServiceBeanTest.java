@@ -1,5 +1,6 @@
 package me.wishva.globalTradeLogistics.procurementSvc.services;
 
+import jakarta.enterprise.event.Event;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 import me.wishva.globalTradeLogistics.core.dto.PurchaseOrderSummary;
@@ -49,6 +50,7 @@ class PurchaseOrderServiceBeanTest {
         inventoryService = mock(IInventoryService.class);
         setField(bean, "em", em);
         setField(bean, "inventoryService", inventoryService);
+        setField(bean, "logEvent", mock(Event.class));
     }
 
     private static void setField(Object target, String fieldName, Object value) throws Exception {

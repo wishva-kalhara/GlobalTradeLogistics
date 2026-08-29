@@ -1,6 +1,8 @@
 package me.wishva.globalTradeLogistics.apiGateway.controllers;
 
 import jakarta.ejb.EJB;
+import jakarta.enterprise.event.Event;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
@@ -8,9 +10,13 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import me.wishva.globalTradeLogistics.apiGateway.security.Secured;
 import me.wishva.globalTradeLogistics.core.dto.InventorySummary;
+import me.wishva.globalTradeLogistics.core.dto.LogEvent;
 import me.wishva.globalTradeLogistics.core.dto.WarehouseSummary;
+import me.wishva.globalTradeLogistics.core.enums.LogLevel;
 import me.wishva.globalTradeLogistics.core.exception.UnauthorizedAccessException;
 import me.wishva.globalTradeLogistics.core.local.IInventoryService;
+import me.wishva.globalTradeLogistics.core.security.CurrentPrincipal;
+import me.wishva.globalTradeLogistics.core.security.CurrentPrincipalHolder;
 
 import java.util.List;
 
@@ -28,9 +34,13 @@ public class InventoryController {
     @EJB
     private IInventoryService inventoryService;
 
+    @Inject
+    private Event<LogEvent> logEvent;
+
     @GET
     @Path("/warehouses")
     public List<WarehouseSummary> listWarehouses() throws UnauthorizedAccessException {
+        logEvent.fire(new LogEvent(correlationKey(), LogLevel.TRACE, "GET /inventory/warehouses"));
         return inventoryService.listWarehouses();
     }
 
@@ -38,6 +48,12 @@ public class InventoryController {
     @Path("/{warehouseId}")
     public List<InventorySummary> listByWarehouse(@PathParam("warehouseId") Integer warehouseId)
             throws UnauthorizedAccessException {
+        logEvent.fire(new LogEvent(correlationKey(), LogLevel.TRACE, "GET /inventory/" + warehouseId));
         return inventoryService.listByWarehouse(warehouseId);
+    }
+
+    private static String correlationKey() {
+        CurrentPrincipal principal = CurrentPrincipalHolder.get();
+        return principal != null ? principal.getEmail() : "inventory";
     }
 }

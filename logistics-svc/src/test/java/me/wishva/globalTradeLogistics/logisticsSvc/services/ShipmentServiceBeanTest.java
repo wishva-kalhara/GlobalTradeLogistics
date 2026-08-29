@@ -1,5 +1,6 @@
 package me.wishva.globalTradeLogistics.logisticsSvc.services;
 
+import jakarta.enterprise.event.Event;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 import me.wishva.globalTradeLogistics.core.enums.Role;
@@ -41,6 +42,10 @@ class ShipmentServiceBeanTest {
         Field field = ShipmentServiceBean.class.getDeclaredField("em");
         field.setAccessible(true);
         field.set(bean, em);
+
+        Field logEventField = ShipmentServiceBean.class.getDeclaredField("logEvent");
+        logEventField.setAccessible(true);
+        logEventField.set(bean, mock(Event.class));
     }
 
     @AfterEach

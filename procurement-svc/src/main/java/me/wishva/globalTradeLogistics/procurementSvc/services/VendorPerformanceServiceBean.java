@@ -3,14 +3,18 @@ package me.wishva.globalTradeLogistics.procurementSvc.services;
 import jakarta.ejb.Stateless;
 import jakarta.ejb.TransactionAttribute;
 import jakarta.ejb.TransactionAttributeType;
+import jakarta.enterprise.event.Event;
+import jakarta.inject.Inject;
 import jakarta.interceptor.Interceptors;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import me.wishva.globalTradeLogistics.core.configs.AppConfig;
 import me.wishva.globalTradeLogistics.core.dto.AuditRecordSummary;
 import me.wishva.globalTradeLogistics.core.dto.EmailNotification;
+import me.wishva.globalTradeLogistics.core.dto.LogEvent;
 import me.wishva.globalTradeLogistics.core.dto.VendorPerformanceResult;
 import me.wishva.globalTradeLogistics.core.enums.EmailType;
+import me.wishva.globalTradeLogistics.core.enums.LogLevel;
 import me.wishva.globalTradeLogistics.core.enums.Role;
 import me.wishva.globalTradeLogistics.core.interceptor.Audited;
 import me.wishva.globalTradeLogistics.core.interceptor.AuditInterceptor;
@@ -43,10 +47,15 @@ public class VendorPerformanceServiceBean implements IVendorPerformanceService {
     @PersistenceContext(unitName = "globalTradeLogisticsPU")
     private EntityManager em;
 
+    @Inject
+    private Event<LogEvent> logEvent;
+
     @Override
     @TransactionAttribute(TransactionAttributeType.REQUIRES_NEW)
     @Audited(resource = "PROCUREMENT", type = "VENDOR_PERFORMANCE")
     public VendorPerformanceResult recomputeForSupplier(Integer supplierId) {
+        String key = "supplier-" + supplierId;
+        logEvent.fire(new LogEvent(key, LogLevel.TRACE, "recomputeForSupplier: starting recompute"));
         List<Grn> grns = em.createQuery(
                         "SELECT g FROM Grn g WHERE g.suppliersSupplierId = :supplierId", Grn.class)
                 .setParameter("supplierId", supplierId)
@@ -77,6 +86,7 @@ public class VendorPerformanceServiceBean implements IVendorPerformanceService {
         String summary = evaluated == 0
                 ? "No GRNs recorded yet for supplier " + supplierId
                 : onTime + "/" + evaluated + " deliveries on time (" + String.format("%.1f", onTimeRate) + "%)";
+        logEvent.fire(new LogEvent(key, LogLevel.TRACE, "recomputeForSupplier: " + summary));
 
         Supplier supplier = em.find(Supplier.class, supplierId);
         if (supplier != null) {
@@ -94,6 +104,7 @@ public class VendorPerformanceServiceBean implements IVendorPerformanceService {
     @Override
     @RequiresRole({Role.ADMIN, Role.COORDINATOR})
     public List<AuditRecordSummary> listVendorPerformanceReports() {
+        logEvent.fire(new LogEvent("vendor-performance", LogLevel.TRACE, "listVendorPerformanceReports: loading audit records"));
         List<AuditRecord> records = em.createNamedQuery("AuditRecord.findByType", AuditRecord.class)
                 .setParameter("type", "VENDOR_PERFORMANCE")
                 .getResultList();
@@ -104,6 +115,8 @@ public class VendorPerformanceServiceBean implements IVendorPerformanceService {
                     record.getId(), record.getCreatedAt(), record.getResource(),
                     record.getAction(), record.getReference(), record.getDetails()));
         }
+        logEvent.fire(new LogEvent("vendor-performance", LogLevel.TRACE,
+                "listVendorPerformanceReports: returning " + summaries.size() + " record(s)"));
         return summaries;
     }
 }

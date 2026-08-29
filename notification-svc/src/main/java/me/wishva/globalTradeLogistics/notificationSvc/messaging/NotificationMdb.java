@@ -2,11 +2,15 @@ package me.wishva.globalTradeLogistics.notificationSvc.messaging;
 
 import jakarta.ejb.ActivationConfigProperty;
 import jakarta.ejb.MessageDriven;
+import jakarta.enterprise.event.Event;
+import jakarta.inject.Inject;
 import jakarta.jms.JMSException;
 import jakarta.jms.Message;
 import jakarta.jms.MessageListener;
 import jakarta.jms.ObjectMessage;
 import me.wishva.globalTradeLogistics.core.dto.EmailNotification;
+import me.wishva.globalTradeLogistics.core.dto.LogEvent;
+import me.wishva.globalTradeLogistics.core.enums.LogLevel;
 import me.wishva.globalTradeLogistics.notificationSvc.mail.EmailSenderService;
 
 import java.util.logging.Level;
@@ -32,12 +36,18 @@ public class NotificationMdb implements MessageListener {
 
     private static final Logger LOG = Logger.getLogger(NotificationMdb.class.getName());
 
+    @Inject
+    private Event<LogEvent> logEvent;
+
     @Override
     public void onMessage(Message message) {
         try {
             EmailNotification notification = (EmailNotification) ((ObjectMessage) message).getObject();
+            logEvent.fire(new LogEvent(notification.getRecipientEmail(), LogLevel.TRACE,
+                    "onMessage: received " + notification.getType() + " notification, forwarding to EmailSenderService"));
             EmailSenderService.send(notification);
         } catch (JMSException e) {
+            logEvent.fire(new LogEvent("notification-mdb", LogLevel.WARN, "onMessage: failed to read EmailNotification from JMS message - " + e.getMessage()));
             LOG.log(Level.SEVERE, "Failed to read EmailNotification from JMS message", e);
         }
     }

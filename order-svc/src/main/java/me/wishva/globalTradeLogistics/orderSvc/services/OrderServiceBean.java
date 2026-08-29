@@ -1,16 +1,20 @@
 package me.wishva.globalTradeLogistics.orderSvc.services;
 
 import jakarta.ejb.Stateless;
+import jakarta.enterprise.event.Event;
+import jakarta.inject.Inject;
 import jakarta.interceptor.Interceptors;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import me.wishva.globalTradeLogistics.core.dto.EmailNotification;
+import me.wishva.globalTradeLogistics.core.dto.LogEvent;
 import me.wishva.globalTradeLogistics.core.dto.OrderItemRequest;
 import me.wishva.globalTradeLogistics.core.dto.OrderLineSummary;
 import me.wishva.globalTradeLogistics.core.dto.OrderSummary;
 import me.wishva.globalTradeLogistics.core.dto.ProductSalesSummary;
 import me.wishva.globalTradeLogistics.core.dto.SalesSummary;
 import me.wishva.globalTradeLogistics.core.enums.EmailType;
+import me.wishva.globalTradeLogistics.core.enums.LogLevel;
 import me.wishva.globalTradeLogistics.core.enums.OrderStatus;
 import me.wishva.globalTradeLogistics.core.enums.Role;
 import me.wishva.globalTradeLogistics.core.exception.InsufficientInventoryException;
@@ -55,6 +59,9 @@ public class OrderServiceBean implements IOrderService {
     @PersistenceContext(unitName = "globalTradeLogisticsPU")
     private EntityManager em;
 
+    @Inject
+    private Event<LogEvent> logEvent;
+
     @Override
     @RequiresRole(Role.CUSTOMER)
     public OrderSummary placeOrder(List<OrderItemRequest> items) throws InsufficientInventoryException, UnknownPrincipalException {
@@ -63,6 +70,7 @@ public class OrderServiceBean implements IOrderService {
         }
 
         Customer customer = resolveCustomer();
+        logEvent.fire(new LogEvent(customer.getEmail(), LogLevel.TRACE, "placeOrder: resolved customer, " + items.size() + " line item(s) requested"));
 
         List<OrderItem> orderItems = new ArrayList<>();
         double total = 0.0;
@@ -72,11 +80,15 @@ public class OrderServiceBean implements IOrderService {
                     .setMaxResults(1)
                     .getResultList();
             if (stock.isEmpty()) {
+                logEvent.fire(new LogEvent(customer.getEmail(), LogLevel.WARN, "placeOrder: no inventory row for product " + item.getProductId()));
                 throw new InsufficientInventoryException("No inventory found for product " + item.getProductId());
             }
 
             Inventory inventory = stock.get(0);
             if (inventory.getQty() < item.getQty()) {
+                logEvent.fire(new LogEvent(customer.getEmail(), LogLevel.WARN,
+                        "placeOrder: insufficient stock for product " + item.getProductId()
+                                + " - requested " + item.getQty() + ", available " + inventory.getQty()));
                 throw new InsufficientInventoryException(
                         "Insufficient stock for product " + item.getProductId()
                                 + ": requested " + item.getQty() + ", available " + inventory.getQty());
@@ -84,6 +96,8 @@ public class OrderServiceBean implements IOrderService {
 
             inventory.setQty(inventory.getQty() - item.getQty());
             inventory.setLastUpdatedAt(Instant.now());
+            logEvent.fire(new LogEvent(customer.getEmail(), LogLevel.TRACE,
+                    "placeOrder: decremented product " + item.getProductId() + " by " + item.getQty() + ", " + inventory.getQty() + " remaining"));
 
             OrderItem orderItem = new OrderItem();
             orderItem.setProductsProductId(item.getProductId());
@@ -100,6 +114,7 @@ public class OrderServiceBean implements IOrderService {
         order.setStatus(OrderStatus.PLACED);
         em.persist(order);
         em.flush();
+        logEvent.fire(new LogEvent(customer.getEmail(), LogLevel.TRACE, "placeOrder: order " + order.getOrderId() + " persisted, total=" + total));
 
         List<OrderLineSummary> lines = new ArrayList<>();
         for (OrderItem orderItem : orderItems) {
@@ -111,6 +126,7 @@ public class OrderServiceBean implements IOrderService {
         NotificationPublisher.publish(new EmailNotification(
                 EmailType.ORDER_CONFIRMATION, customer.getEmail(), customer.getFullName(),
                 Map.of("orderId", String.valueOf(order.getOrderId()), "total", String.valueOf(total))));
+        logEvent.fire(new LogEvent(customer.getEmail(), LogLevel.TRACE, "placeOrder: ORDER_CONFIRMATION notification published for order " + order.getOrderId()));
 
         return new OrderSummary(order.getOrderId(), order.getOrderedAt(), order.getTotalPrice(), order.getStatus(), lines);
     }
@@ -119,8 +135,10 @@ public class OrderServiceBean implements IOrderService {
     @RequiresRole(Role.CUSTOMER)
     public OrderSummary getOrder(Integer orderId) throws OrderNotFoundException, UnknownPrincipalException {
         Customer customer = resolveCustomer();
+        logEvent.fire(new LogEvent(customer.getEmail(), LogLevel.TRACE, "getOrder: loading order " + orderId));
         Order order = em.find(Order.class, orderId);
         if (order == null || !order.getCustomersCustomerId().equals(customer.getUserId())) {
+            logEvent.fire(new LogEvent(customer.getEmail(), LogLevel.WARN, "getOrder: order " + orderId + " not found"));
             throw new OrderNotFoundException("No order found with id " + orderId);
         }
         return toSummary(order);
@@ -130,6 +148,7 @@ public class OrderServiceBean implements IOrderService {
     @RequiresRole(Role.CUSTOMER)
     public List<OrderSummary> listOrdersForCurrentCustomer() throws UnknownPrincipalException {
         Customer customer = resolveCustomer();
+        logEvent.fire(new LogEvent(customer.getEmail(), LogLevel.TRACE, "listOrdersForCurrentCustomer: loading orders"));
         List<Order> orders = em.createNamedQuery("Order.findByCustomer", Order.class)
                 .setParameter("customerId", customer.getUserId())
                 .getResultList();
@@ -138,12 +157,14 @@ public class OrderServiceBean implements IOrderService {
         for (Order order : orders) {
             summaries.add(toSummary(order));
         }
+        logEvent.fire(new LogEvent(customer.getEmail(), LogLevel.TRACE, "listOrdersForCurrentCustomer: returning " + summaries.size() + " order(s)"));
         return summaries;
     }
 
     @Override
     @RequiresRole({Role.ADMIN, Role.COORDINATOR})
     public SalesSummary getSalesSummary() {
+        logEvent.fire(new LogEvent("sales-summary", LogLevel.TRACE, "getSalesSummary: aggregating order data"));
         List<Order> orders = em.createQuery("SELECT o FROM Order o", Order.class).getResultList();
 
         double totalSales = 0.0;
@@ -173,6 +194,8 @@ public class OrderServiceBean implements IOrderService {
             topProducts = topProducts.subList(0, 5);
         }
 
+        logEvent.fire(new LogEvent("sales-summary", LogLevel.TRACE,
+                "getSalesSummary: totalSales=" + totalSales + ", orderCount=" + orders.size()));
         return new SalesSummary(totalSales, orders.size(), ordersByStatus, topProducts);
     }
 
@@ -200,6 +223,7 @@ public class OrderServiceBean implements IOrderService {
                 .setParameter("email", email)
                 .getResultList();
         if (matches.isEmpty()) {
+            logEvent.fire(new LogEvent(email, LogLevel.WARN, "resolveCustomer: no active customer found"));
             throw new UnknownPrincipalException("No active customer found for " + email);
         }
         return matches.get(0);

@@ -1,9 +1,13 @@
 package me.wishva.globalTradeLogistics.core.interceptor;
 
+import jakarta.enterprise.event.Event;
+import jakarta.inject.Inject;
 import jakarta.interceptor.AroundInvoke;
 import jakarta.interceptor.InvocationContext;
 import me.wishva.globalTradeLogistics.core.dto.AuditEvent;
 import me.wishva.globalTradeLogistics.core.dto.Auditable;
+import me.wishva.globalTradeLogistics.core.dto.LogEvent;
+import me.wishva.globalTradeLogistics.core.enums.LogLevel;
 import me.wishva.globalTradeLogistics.core.messaging.AuditPublisher;
 import me.wishva.globalTradeLogistics.core.security.CurrentPrincipal;
 import me.wishva.globalTradeLogistics.core.security.CurrentPrincipalHolder;
@@ -27,6 +31,9 @@ import java.lang.reflect.Method;
  */
 public class AuditInterceptor {
 
+    @Inject
+    private Event<LogEvent> logEvent;
+
     @AroundInvoke
     public Object audit(InvocationContext context) throws Exception {
         Object result = context.proceed();
@@ -44,6 +51,8 @@ public class AuditInterceptor {
             String details = (result instanceof Auditable) ? ((Auditable) result).getAuditDetails() : null;
             String type = binding.type().isEmpty() ? binding.resource() : binding.type();
             AuditPublisher.publish(new AuditEvent(binding.resource(), method.getName(), actorEmail, reference, details, type));
+            logEvent.fire(new LogEvent(actorEmail, LogLevel.TRACE,
+                    "AuditInterceptor: published audit for " + binding.resource() + "." + method.getName()));
         }
 
         return result;

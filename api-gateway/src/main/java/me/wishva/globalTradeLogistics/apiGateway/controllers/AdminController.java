@@ -1,6 +1,8 @@
 package me.wishva.globalTradeLogistics.apiGateway.controllers;
 
 import jakarta.ejb.EJB;
+import jakarta.enterprise.event.Event;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
@@ -14,13 +16,17 @@ import me.wishva.globalTradeLogistics.apiGateway.dto.CreateUserBody;
 import me.wishva.globalTradeLogistics.apiGateway.dto.RegisterCustomerBody;
 import me.wishva.globalTradeLogistics.apiGateway.dto.RegisterSupplierBody;
 import me.wishva.globalTradeLogistics.apiGateway.security.Secured;
+import me.wishva.globalTradeLogistics.core.dto.LogEvent;
 import me.wishva.globalTradeLogistics.core.dto.SalesSummary;
 import me.wishva.globalTradeLogistics.core.dto.SupplierSummary;
 import me.wishva.globalTradeLogistics.core.dto.UserSummary;
+import me.wishva.globalTradeLogistics.core.enums.LogLevel;
 import me.wishva.globalTradeLogistics.core.enums.Role;
 import me.wishva.globalTradeLogistics.core.exception.UnauthorizedAccessException;
 import me.wishva.globalTradeLogistics.core.local.IOrderService;
 import me.wishva.globalTradeLogistics.core.local.IUserAdminService;
+import me.wishva.globalTradeLogistics.core.security.CurrentPrincipal;
+import me.wishva.globalTradeLogistics.core.security.CurrentPrincipalHolder;
 
 import java.util.List;
 
@@ -42,10 +48,14 @@ public class AdminController {
     @EJB
     private IOrderService orderService;
 
+    @Inject
+    private Event<LogEvent> logEvent;
+
     @GET
     @Path("/sales-summary")
     @Produces(MediaType.APPLICATION_JSON)
     public SalesSummary getSalesSummary() throws UnauthorizedAccessException {
+        logEvent.fire(new LogEvent(correlationKey(), LogLevel.TRACE, "GET /admin/sales-summary"));
         return orderService.getSalesSummary();
     }
 
@@ -53,13 +63,16 @@ public class AdminController {
     @Path("/users")
     @Produces(MediaType.APPLICATION_JSON)
     public List<UserSummary> listUsers() throws UnauthorizedAccessException {
+        logEvent.fire(new LogEvent(correlationKey(), LogLevel.TRACE, "GET /admin/users"));
         return userAdminService.listUsers();
     }
 
     @POST
     @Path("/users")
     public Response createUser(CreateUserBody body) throws UnauthorizedAccessException {
+        logEvent.fire(new LogEvent(correlationKey(), LogLevel.TRACE, "POST /admin/users"));
         if (body == null || body.getEmail() == null || body.getFullName() == null || body.getRole() == null) {
+            logEvent.fire(new LogEvent(correlationKey(), LogLevel.WARN, "createUser: email, fullName and role are required"));
             throw new BadRequestException("email, fullName and role are required");
         }
 
@@ -67,6 +80,7 @@ public class AdminController {
         try {
             role = Role.valueOf(body.getRole());
         } catch (IllegalArgumentException e) {
+            logEvent.fire(new LogEvent(correlationKey(), LogLevel.WARN, "createUser: unknown role " + body.getRole()));
             throw new BadRequestException("Unknown role: " + body.getRole());
         }
 
@@ -77,7 +91,9 @@ public class AdminController {
     @POST
     @Path("/customers")
     public Response registerCustomer(RegisterCustomerBody body) throws UnauthorizedAccessException {
+        logEvent.fire(new LogEvent(correlationKey(), LogLevel.TRACE, "POST /admin/customers"));
         if (body == null || body.getEmail() == null || body.getFullName() == null) {
+            logEvent.fire(new LogEvent(correlationKey(), LogLevel.WARN, "registerCustomer: email and fullName are required"));
             throw new BadRequestException("email and fullName are required");
         }
 
@@ -90,18 +106,28 @@ public class AdminController {
     @Path("/suppliers")
     @Produces(MediaType.APPLICATION_JSON)
     public List<SupplierSummary> listSuppliers(@QueryParam("productId") Integer productId) throws UnauthorizedAccessException {
+        logEvent.fire(new LogEvent(correlationKey(), LogLevel.TRACE,
+                productId != null ? "GET /admin/suppliers?productId=" + productId : "GET /admin/suppliers"));
         return productId != null ? userAdminService.listSuppliersForProduct(productId) : userAdminService.listSuppliers();
     }
 
     @POST
     @Path("/suppliers")
     public Response registerSupplier(RegisterSupplierBody body) throws UnauthorizedAccessException {
+        logEvent.fire(new LogEvent(correlationKey(), LogLevel.TRACE, "POST /admin/suppliers"));
         if (body == null || body.getEmail() == null || body.getFullName() == null
                 || body.getMobile1() == null || body.getAddress() == null || body.getCountry() == null) {
+            logEvent.fire(new LogEvent(correlationKey(), LogLevel.WARN,
+                    "registerSupplier: email, fullName, mobile1, address and country are required"));
             throw new BadRequestException("email, fullName, mobile1, address and country are required");
         }
 
         userAdminService.registerSupplier(body.getEmail(), body.getFullName(), body.getMobile1(), body.getAddress(), body.getCountry());
         return Response.status(Response.Status.CREATED).build();
+    }
+
+    private static String correlationKey() {
+        CurrentPrincipal principal = CurrentPrincipalHolder.get();
+        return principal != null ? principal.getEmail() : "admin";
     }
 }

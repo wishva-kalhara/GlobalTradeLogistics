@@ -2,12 +2,16 @@ package me.wishva.globalTradeLogistics.procurementSvc.services;
 
 import jakarta.ejb.Schedule;
 import jakarta.ejb.Singleton;
+import jakarta.enterprise.event.Event;
+import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import me.wishva.globalTradeLogistics.core.configs.AppConfig;
 import me.wishva.globalTradeLogistics.core.dto.AuditEvent;
 import me.wishva.globalTradeLogistics.core.dto.EmailNotification;
+import me.wishva.globalTradeLogistics.core.dto.LogEvent;
 import me.wishva.globalTradeLogistics.core.enums.EmailType;
+import me.wishva.globalTradeLogistics.core.enums.LogLevel;
 import me.wishva.globalTradeLogistics.core.messaging.AuditPublisher;
 import me.wishva.globalTradeLogistics.core.messaging.NotificationPublisher;
 import me.wishva.globalTradeLogistics.core.model.PurchaseOrder;
@@ -32,10 +36,14 @@ public class PurchaseOrderOverdueTimerBean {
     @PersistenceContext(unitName = "globalTradeLogisticsPU")
     private EntityManager em;
 
+    @Inject
+    private Event<LogEvent> logEvent;
+
     @Schedule(hour = "2", persistent = true)
     void checkOverduePurchaseOrders() {
         List<PurchaseOrder> open = em.createNamedQuery("PurchaseOrder.findOpen", PurchaseOrder.class).getResultList();
         Instant now = Instant.now();
+        logEvent.fire(new LogEvent("po-overdue-timer", LogLevel.TRACE, "checkOverduePurchaseOrders: evaluating " + open.size() + " open PO(s)"));
 
         for (PurchaseOrder po : open) {
             List<SupplierProvidingProduct> offerings = em.createNamedQuery(
@@ -51,6 +59,8 @@ public class PurchaseOrderOverdueTimerBean {
             if (now.isBefore(deadline)) {
                 continue;
             }
+
+            logEvent.fire(new LogEvent("po-" + po.getPoId(), LogLevel.TRACE, "checkOverduePurchaseOrders: PO " + po.getPoId() + " overdue since " + deadline));
 
             Supplier supplier = em.find(Supplier.class, po.getSuppliersSupplierId());
             Map<String, String> params = Map.of(

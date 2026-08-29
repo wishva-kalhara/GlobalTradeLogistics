@@ -1,13 +1,17 @@
 package me.wishva.globalTradeLogistics.core.interceptor;
 
+import jakarta.enterprise.event.Event;
 import jakarta.interceptor.InvocationContext;
+import me.wishva.globalTradeLogistics.core.dto.LogEvent;
 import me.wishva.globalTradeLogistics.core.enums.Role;
 import me.wishva.globalTradeLogistics.core.exception.UnauthorizedAccessException;
 import me.wishva.globalTradeLogistics.core.security.CurrentPrincipal;
 import me.wishva.globalTradeLogistics.core.security.CurrentPrincipalHolder;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -17,7 +21,16 @@ import static org.mockito.Mockito.when;
 
 class RequiresRoleInterceptorTest {
 
+    @SuppressWarnings("unchecked")
+    private final Event<LogEvent> logEvent = mock(Event.class);
     private final RequiresRoleInterceptor interceptor = new RequiresRoleInterceptor();
+
+    @BeforeEach
+    void injectLogEvent() throws Exception {
+        Field field = RequiresRoleInterceptor.class.getDeclaredField("logEvent");
+        field.setAccessible(true);
+        field.set(interceptor, logEvent);
+    }
 
     @RequiresRole(Role.ADMIN)
     static class ClassLevelBean {

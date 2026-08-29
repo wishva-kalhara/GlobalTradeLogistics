@@ -2,12 +2,16 @@ package me.wishva.globalTradeLogistics.logisticsSvc.services;
 
 import jakarta.ejb.Schedule;
 import jakarta.ejb.Singleton;
+import jakarta.enterprise.event.Event;
+import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import me.wishva.globalTradeLogistics.core.configs.AppConfig;
 import me.wishva.globalTradeLogistics.core.dto.AuditEvent;
 import me.wishva.globalTradeLogistics.core.dto.EmailNotification;
+import me.wishva.globalTradeLogistics.core.dto.LogEvent;
 import me.wishva.globalTradeLogistics.core.enums.EmailType;
+import me.wishva.globalTradeLogistics.core.enums.LogLevel;
 import me.wishva.globalTradeLogistics.core.messaging.AuditPublisher;
 import me.wishva.globalTradeLogistics.core.messaging.NotificationPublisher;
 import me.wishva.globalTradeLogistics.core.model.CustomClearanceRecord;
@@ -32,14 +36,20 @@ public class CustomsDeadlineTimerBean {
     @PersistenceContext(unitName = "globalTradeLogisticsPU")
     private EntityManager em;
 
+    @Inject
+    private Event<LogEvent> logEvent;
+
     @Schedule(hour = "6", persistent = true)
     void checkPendingCustomsClearances() {
         List<CustomClearanceRecord> pending = em.createNamedQuery(
                         "CustomClearanceRecord.findPending", CustomClearanceRecord.class)
                 .getResultList();
+        logEvent.fire(new LogEvent("customs-deadline-timer", LogLevel.TRACE, "checkPendingCustomsClearances: " + pending.size() + " record(s) still PENDING"));
 
         for (CustomClearanceRecord record : pending) {
             Shipment shipment = em.find(Shipment.class, record.getSupplierShipmentsShipmentId());
+            logEvent.fire(new LogEvent("shipment-" + record.getSupplierShipmentsShipmentId(), LogLevel.TRACE,
+                    "checkPendingCustomsClearances: flagging customs record " + record.getRecordId()));
 
             NotificationPublisher.publish(new EmailNotification(
                     EmailType.CUSTOMS_DEADLINE_WARNING, AppConfig.ADMIN_EMAIL, null,

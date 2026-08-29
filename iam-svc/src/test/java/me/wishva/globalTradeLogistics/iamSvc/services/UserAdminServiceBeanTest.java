@@ -1,5 +1,6 @@
 package me.wishva.globalTradeLogistics.iamSvc.services;
 
+import jakarta.enterprise.event.Event;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 import me.wishva.globalTradeLogistics.core.dto.SupplierSummary;
@@ -30,6 +31,10 @@ class UserAdminServiceBeanTest {
         Field field = UserAdminServiceBean.class.getDeclaredField("em");
         field.setAccessible(true);
         field.set(bean, em);
+
+        Field logEventField = UserAdminServiceBean.class.getDeclaredField("logEvent");
+        logEventField.setAccessible(true);
+        logEventField.set(bean, mock(Event.class));
 
         Supplier onboarded = new Supplier();
         onboarded.setSupplierId(1);

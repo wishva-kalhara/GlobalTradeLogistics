@@ -2,6 +2,8 @@ package me.wishva.globalTradeLogistics.monitoringSvc.services;
 
 import jakarta.ejb.ActivationConfigProperty;
 import jakarta.ejb.MessageDriven;
+import jakarta.enterprise.event.Event;
+import jakarta.inject.Inject;
 import jakarta.jms.JMSException;
 import jakarta.jms.Message;
 import jakarta.jms.MessageListener;
@@ -9,6 +11,8 @@ import jakarta.jms.ObjectMessage;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import me.wishva.globalTradeLogistics.core.dto.AuditEvent;
+import me.wishva.globalTradeLogistics.core.dto.LogEvent;
+import me.wishva.globalTradeLogistics.core.enums.LogLevel;
 import me.wishva.globalTradeLogistics.core.model.AuditRecord;
 
 import java.util.logging.Level;
@@ -40,10 +44,15 @@ public class AuditPersisterMdb implements MessageListener {
     @PersistenceContext(unitName = "globalTradeLogisticsPU")
     private EntityManager em;
 
+    @Inject
+    private Event<LogEvent> logEvent;
+
     @Override
     public void onMessage(Message message) {
         try {
             AuditEvent event = (AuditEvent) ((ObjectMessage) message).getObject();
+            logEvent.fire(new LogEvent(event.getActorEmail(), LogLevel.TRACE,
+                    "AuditPersisterMdb: persisting audit " + event.getResource() + "." + event.getAction()));
 
             AuditRecord record = new AuditRecord();
             record.setCreatedAt(event.getOccurredAt());
@@ -54,6 +63,8 @@ public class AuditPersisterMdb implements MessageListener {
             record.setReference(truncate(event.getReference() != null ? event.getReference() : ""));
             em.persist(record);
         } catch (JMSException e) {
+            logEvent.fire(new LogEvent("audit-mdb", LogLevel.WARN,
+                    "AuditPersisterMdb: failed to read AuditEvent from JMS message - " + e.getMessage()));
             LOG.log(Level.SEVERE, "Failed to read AuditEvent from JMS message", e);
         }
     }

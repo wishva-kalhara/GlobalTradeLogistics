@@ -1,7 +1,11 @@
 package me.wishva.globalTradeLogistics.core.interceptor;
 
+import jakarta.enterprise.event.Event;
+import jakarta.inject.Inject;
 import jakarta.interceptor.AroundInvoke;
 import jakarta.interceptor.InvocationContext;
+import me.wishva.globalTradeLogistics.core.dto.LogEvent;
+import me.wishva.globalTradeLogistics.core.enums.LogLevel;
 import me.wishva.globalTradeLogistics.core.enums.Role;
 import me.wishva.globalTradeLogistics.core.exception.UnauthorizedAccessException;
 import me.wishva.globalTradeLogistics.core.security.CurrentPrincipal;
@@ -21,6 +25,9 @@ import java.lang.reflect.Method;
  */
 public class RequiresRoleInterceptor {
 
+    @Inject
+    private Event<LogEvent> logEvent;
+
     @AroundInvoke
     public Object authorize(InvocationContext context) throws Exception {
         Method method = context.getMethod();
@@ -32,6 +39,8 @@ public class RequiresRoleInterceptor {
         if (binding != null) {
             CurrentPrincipal principal = CurrentPrincipalHolder.get();
             if (principal == null) {
+                logEvent.fire(new LogEvent("auth", LogLevel.WARN,
+                        "RequiresRoleInterceptor: no authenticated principal for " + method.getName()));
                 throw new UnauthorizedAccessException(
                         "No authenticated principal for role-protected method " + method.getName());
             }
@@ -45,6 +54,8 @@ public class RequiresRoleInterceptor {
             }
 
             if (!allowed) {
+                logEvent.fire(new LogEvent(principal.getEmail(), LogLevel.WARN,
+                        "RequiresRoleInterceptor: role " + principal.getRole() + " denied for " + method.getName()));
                 throw new UnauthorizedAccessException(
                         "Role " + principal.getRole() + " is not permitted to call " + method.getName());
             }
