@@ -1,11 +1,6 @@
 package me.wishva.globalTradeLogistics.notificationSvc.mail;
 
-import jakarta.mail.Authenticator;
-import jakarta.mail.Message;
-import jakarta.mail.MessagingException;
-import jakarta.mail.PasswordAuthentication;
-import jakarta.mail.Session;
-import jakarta.mail.Transport;
+import jakarta.mail.*;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 import me.wishva.globalTradeLogistics.core.configs.AppConfig;
@@ -61,7 +56,7 @@ public final class EmailSenderService {
         props.put("mail.smtp.host", AppConfig.SMTP_HOST);
         props.put("mail.smtp.port", AppConfig.SMTP_PORT);
         props.put("mail.smtp.auth", String.valueOf(AppConfig.SMTP_AUTH));
-        props.put("mail.smtp.starttls.enable", "true");
+//        props.put("mail.smtp.starttls.enable", "true");
 
         if (!AppConfig.SMTP_AUTH) {
             return Session.getInstance(props);
